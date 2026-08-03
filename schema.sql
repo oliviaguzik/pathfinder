@@ -19,7 +19,7 @@ create table tasks (
   goal_id uuid references goals(id) on delete set null,
   priority text default 'Medium', -- High | Medium | Low
   effort text default 'Medium', -- Small | Medium | Large
-  status text not null default 'To Do', -- To Do | In Progress | Done
+  status text not null default 'To Do', -- To Do | Done
   due_date date,
   start_date date,
   context text, -- @home | @errand | @computer | @calls

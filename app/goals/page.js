@@ -4,6 +4,18 @@ import { useEffect, useState } from "react";
 import { supabase } from "../../lib/supabaseClient";
 import CircularProgress from "../components/CircularProgress";
 import Modal from "../components/Modal";
+import Select from "../components/Select";
+
+// Date-only strings (YYYY-MM-DD) parse as UTC midnight by default, which drifts
+// to the wrong local calendar day near midnight. Anchor them to local midnight instead.
+function parseLocalDate(dateStr) {
+  return new Date(`${dateStr}T00:00:00`);
+}
+
+function todayLocalISODate() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
 
 export default function GoalsPage() {
   const [goals, setGoals] = useState([]);
@@ -65,7 +77,7 @@ export default function GoalsPage() {
     await supabase.from("goals").insert({
       name,
       target_date: targetDate || null,
-      start_date: new Date().toISOString().slice(0, 10),
+      start_date: todayLocalISODate(),
       status: "In Progress",
     });
     setName("");
@@ -131,6 +143,7 @@ export default function GoalsPage() {
     });
     setTaskName("");
     setTaskDueDate("");
+    setAddTaskForId(null);
     loadData();
   }
 
@@ -186,8 +199,7 @@ export default function GoalsPage() {
     if (!goal.target_date) return null;
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    const target = new Date(goal.target_date);
-    target.setHours(0, 0, 0, 0);
+    const target = parseLocalDate(goal.target_date);
     const diffDays = Math.round((target - today) / 86400000);
     const dateStr = target.toLocaleDateString(undefined, { month: "short", day: "numeric" });
     if (diffDays > 0) return `Target: ${dateStr} · ${diffDays} day${diffDays === 1 ? "" : "s"} left`;
@@ -196,17 +208,39 @@ export default function GoalsPage() {
   }
 
   function paceLabel(goal, goalTasks) {
-    if (!goal.target_date) return null;
+    const total = goalTasks.length;
+    const doneCount = goalTasks.filter((t) => t.status === "Done").length;
     const today = new Date();
-    const start = goal.start_date ? new Date(goal.start_date) : new Date(goal.created_at);
-    const target = new Date(goal.target_date);
-    if (today < start) return { text: "Not started yet", cls: "badge-low" };
-    if (today > target) return { text: "Past due", cls: "badge-high" };
+    today.setHours(0, 0, 0, 0);
+    const target = goal.target_date ? parseLocalDate(goal.target_date) : null;
+    const isPastDue = target && today > target;
+
+    if (total === 0) {
+      return isPastDue ? { text: "Past due", cls: "badge-high" } : null;
+    }
+    if (doneCount === total) {
+      return { text: "Completed", cls: "badge-life" };
+    }
+    if (isPastDue) {
+      return { text: "Past due", cls: "badge-high" };
+    }
+    if (doneCount === 0) {
+      return { text: "Not started yet", cls: "badge-low" };
+    }
+    if (!target) {
+      return null;
+    }
+
+    const hasOverdueTask = goalTasks.some(
+      (t) => t.status !== "Done" && t.due_date && parseLocalDate(t.due_date) < today
+    );
+    if (hasOverdueTask) return { text: "Behind pace", cls: "badge-high" };
+
+    const start = goal.start_date ? parseLocalDate(goal.start_date) : new Date(goal.created_at);
     const totalDays = (target - start) / 86400000;
     const elapsedDays = (today - start) / 86400000;
     const timePct = totalDays > 0 ? elapsedDays / totalDays : 1;
-    const doneCount = goalTasks.filter((t) => t.status === "Done").length;
-    const donePct = goalTasks.length > 0 ? doneCount / goalTasks.length : 0;
+    const donePct = doneCount / total;
     return donePct >= timePct
       ? { text: "On track", cls: "badge-life" }
       : { text: "Behind pace", cls: "badge-high" };
@@ -227,19 +261,11 @@ export default function GoalsPage() {
         </div>
         <div className="field">
           <label>Priority</label>
-          <select value={taskPriority} onChange={(e) => setTaskPriority(e.target.value)}>
-            <option>High</option>
-            <option>Medium</option>
-            <option>Low</option>
-          </select>
+          <Select value={taskPriority} onChange={setTaskPriority} options={["High", "Medium", "Low"]} />
         </div>
         <div className="field">
           <label>Effort</label>
-          <select value={taskEffort} onChange={(e) => setTaskEffort(e.target.value)}>
-            <option>Small</option>
-            <option>Medium</option>
-            <option>Large</option>
-          </select>
+          <Select value={taskEffort} onChange={setTaskEffort} options={["Small", "Medium", "Large"]} />
         </div>
         <div className="field">
           <label>Due date</label>
@@ -247,6 +273,7 @@ export default function GoalsPage() {
         </div>
         <div className="form-actions">
           <button type="submit" className="primary">Add task</button>
+          <button type="button" onClick={() => toggleAddTaskFor(goalId)}>Cancel</button>
         </div>
       </form>
     );
@@ -261,19 +288,11 @@ export default function GoalsPage() {
         </div>
         <div className="field">
           <label>Priority</label>
-          <select value={editTaskPriority} onChange={(e) => setEditTaskPriority(e.target.value)}>
-            <option>High</option>
-            <option>Medium</option>
-            <option>Low</option>
-          </select>
+          <Select value={editTaskPriority} onChange={setEditTaskPriority} options={["High", "Medium", "Low"]} />
         </div>
         <div className="field">
           <label>Effort</label>
-          <select value={editTaskEffort} onChange={(e) => setEditTaskEffort(e.target.value)}>
-            <option>Small</option>
-            <option>Medium</option>
-            <option>Large</option>
-          </select>
+          <Select value={editTaskEffort} onChange={setEditTaskEffort} options={["Small", "Medium", "Large"]} />
         </div>
         <div className="field">
           <label>Due date</label>
@@ -378,9 +397,9 @@ export default function GoalsPage() {
         <div className="tile-tasks-box">
           <div className="tile-tasks-header">
             <span>Tasks</span>
-            <button className="ghost" onClick={() => toggleAddTaskFor(g.id)}>
-              {addingHere ? "Cancel" : "+ Add task"}
-            </button>
+            {!addingHere && (
+              <button className="ghost" onClick={() => toggleAddTaskFor(g.id)}>+ Add task</button>
+            )}
           </div>
 
           {addingHere && <div className="tile-add-task-form">{renderAddTaskForm(g.id)}</div>}
