@@ -89,7 +89,7 @@ export default function Select({ id, value, onChange, options, ariaLabel, onClea
           type="button"
           id={id}
           ref={triggerRef}
-          className={`select-trigger ${onClear ? "has-clear" : ""}`}
+          className="select-trigger"
           aria-haspopup="listbox"
           aria-expanded={open}
           aria-label={ariaLabel}

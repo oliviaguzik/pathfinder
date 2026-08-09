@@ -9,6 +9,8 @@ create table goals (
   start_date date,
   target_date date,
   notes text,
+  completed_at timestamp with time zone,
+  position double precision,
   created_at timestamp with time zone default now()
 );
 
@@ -24,6 +26,9 @@ create table tasks (
   start_date date,
   context text, -- @home | @errand | @computer | @calls
   recurring boolean default false,
+  recurrence_unit text, -- day | week | month (interpreted with recurrence_interval)
+  recurrence_interval integer default 1,
+  position double precision,
   created_at timestamp with time zone default now()
 );
 

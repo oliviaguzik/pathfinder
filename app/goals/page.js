@@ -5,6 +5,15 @@ import { supabase } from "../../lib/supabaseClient";
 import CircularProgress from "../components/CircularProgress";
 import Modal from "../components/Modal";
 import Select from "../components/Select";
+import {
+  RECURRENCE_PRESET_OPTIONS,
+  presetFromRecurrence,
+  recurrenceFromPreset,
+  recurrenceLabel,
+  nextOccurrence,
+} from "../../lib/recurrence";
+import { isGoalFullyDone, computeGoalCompletionPatch } from "../../lib/goalCompletion";
+import { positionBetween, nextPosition, sortByPosition } from "../../lib/reorder";
 
 // Date-only strings (YYYY-MM-DD) parse as UTC midnight by default, which drifts
 // to the wrong local calendar day near midnight. Anchor them to local midnight instead.
@@ -12,9 +21,12 @@ function parseLocalDate(dateStr) {
   return new Date(`${dateStr}T00:00:00`);
 }
 
+function toISODateLocal(date) {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+}
+
 function todayLocalISODate() {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  return toISODateLocal(new Date());
 }
 
 export default function GoalsPage() {
@@ -39,12 +51,21 @@ export default function GoalsPage() {
   const [taskPriority, setTaskPriority] = useState("Medium");
   const [taskEffort, setTaskEffort] = useState("Medium");
   const [taskDueDate, setTaskDueDate] = useState("");
+  const [taskRecurring, setTaskRecurring] = useState(false);
+  const [taskRecurrencePreset, setTaskRecurrencePreset] = useState("daily");
+  const [taskRecurrenceCustomDays, setTaskRecurrenceCustomDays] = useState("2");
 
   const [editingTaskId, setEditingTaskId] = useState(null);
   const [editTaskName, setEditTaskName] = useState("");
   const [editTaskPriority, setEditTaskPriority] = useState("Medium");
   const [editTaskEffort, setEditTaskEffort] = useState("Medium");
   const [editTaskDueDate, setEditTaskDueDate] = useState("");
+  const [editTaskRecurring, setEditTaskRecurring] = useState(false);
+  const [editTaskRecurrencePreset, setEditTaskRecurrencePreset] = useState("daily");
+  const [editTaskRecurrenceCustomDays, setEditTaskRecurrenceCustomDays] = useState("2");
+
+  const [draggedGoalId, setDraggedGoalId] = useState(null);
+  const [dragOverGoalId, setDragOverGoalId] = useState(null);
 
   useEffect(() => {
     const stored = localStorage.getItem("goalsView");
@@ -79,6 +100,7 @@ export default function GoalsPage() {
       target_date: targetDate || null,
       start_date: todayLocalISODate(),
       status: "In Progress",
+      position: nextPosition(goals),
     });
     setName("");
     setTargetDate("");
@@ -110,6 +132,19 @@ export default function GoalsPage() {
     loadData();
   }
 
+  async function reorderGoal(draggedId, targetId, placeAfter) {
+    if (!draggedId || draggedId === targetId) return;
+    const ordered = sortedGoals.filter((g) => g.id !== draggedId);
+    const targetIndex = ordered.findIndex((g) => g.id === targetId);
+    if (targetIndex === -1) return;
+    const insertIndex = placeAfter ? targetIndex + 1 : targetIndex;
+    const prev = ordered[insertIndex - 1];
+    const next = ordered[insertIndex];
+    const newPosition = positionBetween(prev?.position, next?.position);
+    await supabase.from("goals").update({ position: newPosition }).eq("id", draggedId);
+    loadData();
+  }
+
   async function deleteGoal(id, mode) {
     if (mode === "cascade") {
       await supabase.from("tasks").delete().eq("goal_id", id);
@@ -127,11 +162,15 @@ export default function GoalsPage() {
     setTaskPriority("Medium");
     setTaskEffort("Medium");
     setTaskDueDate("");
+    setTaskRecurring(false);
+    setTaskRecurrencePreset("daily");
+    setTaskRecurrenceCustomDays("2");
   }
 
   async function addTaskToGoal(e, goalId) {
     e.preventDefault();
     if (!taskName.trim()) return;
+    const recurrence = taskRecurring ? recurrenceFromPreset(taskRecurrencePreset, taskRecurrenceCustomDays) : null;
     await supabase.from("tasks").insert({
       name: taskName,
       category: "Goal-Related",
@@ -140,6 +179,9 @@ export default function GoalsPage() {
       effort: taskEffort,
       due_date: taskDueDate || null,
       status: "To Do",
+      recurring: taskRecurring,
+      recurrence_unit: recurrence?.unit || null,
+      recurrence_interval: recurrence?.interval || 1,
     });
     setTaskName("");
     setTaskDueDate("");
@@ -153,6 +195,9 @@ export default function GoalsPage() {
     setEditTaskPriority(task.priority || "Medium");
     setEditTaskEffort(task.effort || "Medium");
     setEditTaskDueDate(task.due_date || "");
+    setEditTaskRecurring(!!task.recurring);
+    setEditTaskRecurrencePreset(presetFromRecurrence(task.recurrence_unit || "day", task.recurrence_interval || 1));
+    setEditTaskRecurrenceCustomDays(String(task.recurrence_interval || 2));
   }
 
   function cancelEditTask() {
@@ -161,11 +206,17 @@ export default function GoalsPage() {
 
   async function saveEditTask(id) {
     if (!editTaskName.trim()) return;
+    const recurrence = editTaskRecurring
+      ? recurrenceFromPreset(editTaskRecurrencePreset, editTaskRecurrenceCustomDays)
+      : null;
     await supabase.from("tasks").update({
       name: editTaskName,
       priority: editTaskPriority,
       effort: editTaskEffort,
       due_date: editTaskDueDate || null,
+      recurring: editTaskRecurring,
+      recurrence_unit: recurrence?.unit || null,
+      recurrence_interval: recurrence?.interval || 1,
     }).eq("id", id);
     setEditingTaskId(null);
     loadData();
@@ -174,6 +225,19 @@ export default function GoalsPage() {
   async function toggleDone(task) {
     const newStatus = task.status === "Done" ? "To Do" : "Done";
     await supabase.from("tasks").update({ status: newStatus }).eq("id", task.id);
+    if (newStatus === "Done" && task.recurring) {
+      await supabase.from("tasks").insert(nextOccurrence(task, toISODateLocal, parseLocalDate));
+    }
+    if (task.goal_id) {
+      const goal = goals.find((g) => g.id === task.goal_id);
+      const goalTasksAfter = tasks
+        .filter((t) => t.goal_id === task.goal_id)
+        .map((t) => (t.id === task.id ? { ...t, status: newStatus } : t));
+      const patch = computeGoalCompletionPatch(goal, goalTasksAfter);
+      if (patch) {
+        await supabase.from("goals").update(patch).eq("id", task.goal_id);
+      }
+    }
     loadData();
   }
 
@@ -186,13 +250,20 @@ export default function GoalsPage() {
     return tasks.filter((t) => t.goal_id === goalId);
   }
 
-  function sortByDueDate(list) {
+  function sortByDueDateOnly(list) {
     return [...list].sort((a, b) => {
       if (!a.due_date && !b.due_date) return 0;
       if (!a.due_date) return 1;
       if (!b.due_date) return -1;
       return new Date(a.due_date) - new Date(b.due_date);
     });
+  }
+
+  // Completed tasks always sink to the bottom, regardless of due date.
+  function sortByDueDate(list) {
+    const notDone = list.filter((t) => t.status !== "Done");
+    const done = list.filter((t) => t.status === "Done");
+    return [...sortByDueDateOnly(notDone), ...sortByDueDateOnly(done)];
   }
 
   function targetLine(goal) {
@@ -219,7 +290,10 @@ export default function GoalsPage() {
       return isPastDue ? { text: "Past due", cls: "badge-high" } : null;
     }
     if (doneCount === total) {
-      return { text: "Completed", cls: "badge-life" };
+      const completedText = goal.completed_at
+        ? `Completed ${new Date(goal.completed_at).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })}`
+        : "Completed";
+      return { text: completedText, cls: "badge-life" };
     }
     if (isPastDue) {
       return { text: "Past due", cls: "badge-high" };
@@ -271,6 +345,38 @@ export default function GoalsPage() {
           <label>Due date</label>
           <input type="date" value={taskDueDate} onChange={(e) => setTaskDueDate(e.target.value)} />
         </div>
+        <div className="field field-recurring">
+          <label>Recurring</label>
+          <input
+            type="checkbox"
+            className="checkbox"
+            checked={taskRecurring}
+            onChange={(e) => {
+              setTaskRecurring(e.target.checked);
+              if (!e.target.checked) {
+                setTaskRecurrencePreset("daily");
+                setTaskRecurrenceCustomDays("2");
+              }
+            }}
+          />
+        </div>
+        {taskRecurring && (
+          <div className="field field-repeats">
+            <label>Repeats</label>
+            <Select value={taskRecurrencePreset} onChange={setTaskRecurrencePreset} options={RECURRENCE_PRESET_OPTIONS} />
+          </div>
+        )}
+        {taskRecurring && taskRecurrencePreset === "custom" && (
+          <div className="field">
+            <label>Every N days</label>
+            <input
+              type="number"
+              min="1"
+              value={taskRecurrenceCustomDays}
+              onChange={(e) => setTaskRecurrenceCustomDays(e.target.value)}
+            />
+          </div>
+        )}
         <div className="form-actions">
           <button type="submit" className="primary">Add task</button>
           <button type="button" onClick={() => toggleAddTaskFor(goalId)}>Cancel</button>
@@ -298,6 +404,42 @@ export default function GoalsPage() {
           <label>Due date</label>
           <input type="date" value={editTaskDueDate} onChange={(e) => setEditTaskDueDate(e.target.value)} />
         </div>
+        <div className="field field-recurring">
+          <label>Recurring</label>
+          <input
+            type="checkbox"
+            className="checkbox"
+            checked={editTaskRecurring}
+            onChange={(e) => {
+              setEditTaskRecurring(e.target.checked);
+              if (!e.target.checked) {
+                setEditTaskRecurrencePreset("daily");
+                setEditTaskRecurrenceCustomDays("2");
+              }
+            }}
+          />
+        </div>
+        {editTaskRecurring && (
+          <div className="field field-repeats">
+            <label>Repeats</label>
+            <Select
+              value={editTaskRecurrencePreset}
+              onChange={setEditTaskRecurrencePreset}
+              options={RECURRENCE_PRESET_OPTIONS}
+            />
+          </div>
+        )}
+        {editTaskRecurring && editTaskRecurrencePreset === "custom" && (
+          <div className="field">
+            <label>Every N days</label>
+            <input
+              type="number"
+              min="1"
+              value={editTaskRecurrenceCustomDays}
+              onChange={(e) => setEditTaskRecurrenceCustomDays(e.target.value)}
+            />
+          </div>
+        )}
         <div className="form-actions">
           <button className="primary" onClick={() => saveEditTask(task.id)}>Save</button>
           <button onClick={cancelEditTask}>Cancel</button>
@@ -324,6 +466,9 @@ export default function GoalsPage() {
         >
           {t.name}
         </span>
+        {t.recurring && (
+          <span className="muted recurring-icon" title={recurrenceLabel(t)}>↻</span>
+        )}
         <span className={`badge badge-${t.priority?.toLowerCase()}`}>{t.priority}</span>
         <button className="ghost row-delete-btn" onClick={() => deleteTask(t.id)} aria-label="Delete task">×</button>
       </div>
@@ -413,6 +558,14 @@ export default function GoalsPage() {
     );
   }
 
+  // Manual drag order first, then fully completed goals sink to the bottom
+  // (stable sort preserves relative order within each group).
+  const sortedGoals = sortByPosition(goals).sort((a, b) => {
+    const aDone = isGoalFullyDone(tasksFor(a.id));
+    const bDone = isGoalFullyDone(tasksFor(b.id));
+    return aDone === bDone ? 0 : aDone ? 1 : -1;
+  });
+
   return (
     <div>
       <div className="row-between" style={{ alignItems: "flex-start" }}>
@@ -446,14 +599,47 @@ export default function GoalsPage() {
 
       {view === "grid" ? (
         <div className="goal-grid">
-          {goals.map((g) => {
+          {sortedGoals.map((g) => {
             const goalTasks = sortByDueDate(tasksFor(g.id));
             const doneCount = goalTasks.filter((t) => t.status === "Done").length;
             const pct = goalTasks.length > 0 ? Math.round((doneCount / goalTasks.length) * 100) : 0;
             const pace = paceLabel(g, goalTasks);
 
             return (
-              <div className="card goal-tile-full" key={g.id}>
+              <div
+                className={`card goal-tile-full ${dragOverGoalId === g.id ? "drag-over" : ""}`}
+                key={g.id}
+                onDragOver={(e) => {
+                  if (!draggedGoalId) return;
+                  e.preventDefault();
+                  setDragOverGoalId(g.id);
+                }}
+                onDragLeave={() => setDragOverGoalId((id) => (id === g.id ? null : id))}
+                onDrop={(e) => {
+                  e.preventDefault();
+                  setDragOverGoalId(null);
+                  const rect = e.currentTarget.getBoundingClientRect();
+                  const placeAfter = e.clientY > rect.top + rect.height / 2;
+                  reorderGoal(draggedGoalId, g.id, placeAfter);
+                  setDraggedGoalId(null);
+                }}
+              >
+                <div
+                  className="drag-handle goal-drag-handle"
+                  draggable
+                  onDragStart={(e) => {
+                    e.dataTransfer.effectAllowed = "move";
+                    setDraggedGoalId(g.id);
+                  }}
+                  onDragEnd={() => {
+                    setDraggedGoalId(null);
+                    setDragOverGoalId(null);
+                  }}
+                  title="Drag to reorder"
+                  aria-label="Drag to reorder"
+                >
+                  ⠿
+                </div>
                 {renderGoalBody(g, goalTasks, pace, pct, doneCount)}
               </div>
             );
@@ -461,7 +647,7 @@ export default function GoalsPage() {
         </div>
       ) : (
         <div className="goal-list">
-          {goals.map((g) => {
+          {sortedGoals.map((g) => {
             const goalTasks = sortByDueDate(tasksFor(g.id));
             const doneCount = goalTasks.filter((t) => t.status === "Done").length;
             const pct = goalTasks.length > 0 ? Math.round((doneCount / goalTasks.length) * 100) : 0;
@@ -469,7 +655,24 @@ export default function GoalsPage() {
             const isOpen = listExpanded[g.id];
 
             return (
-              <div className="card goal-list-row-full" key={g.id}>
+              <div
+                className={`card goal-list-row-full ${dragOverGoalId === g.id ? "drag-over" : ""}`}
+                key={g.id}
+                onDragOver={(e) => {
+                  if (!draggedGoalId) return;
+                  e.preventDefault();
+                  setDragOverGoalId(g.id);
+                }}
+                onDragLeave={() => setDragOverGoalId((id) => (id === g.id ? null : id))}
+                onDrop={(e) => {
+                  e.preventDefault();
+                  setDragOverGoalId(null);
+                  const rect = e.currentTarget.getBoundingClientRect();
+                  const placeAfter = e.clientY > rect.top + rect.height / 2;
+                  reorderGoal(draggedGoalId, g.id, placeAfter);
+                  setDraggedGoalId(null);
+                }}
+              >
                 <div
                   className="goal-list-row-summary"
                   role="button"
@@ -482,6 +685,23 @@ export default function GoalsPage() {
                     }
                   }}
                 >
+                  <div
+                    className="drag-handle goal-drag-handle"
+                    draggable
+                    onDragStart={(e) => {
+                      e.dataTransfer.effectAllowed = "move";
+                      setDraggedGoalId(g.id);
+                    }}
+                    onDragEnd={() => {
+                      setDraggedGoalId(null);
+                      setDragOverGoalId(null);
+                    }}
+                    onClick={(e) => e.stopPropagation()}
+                    title="Drag to reorder"
+                    aria-label="Drag to reorder"
+                  >
+                    ⠿
+                  </div>
                   <CircularProgress percent={pct} size={40} strokeWidth={4} />
                   <div className="goal-list-row-info">
                     <div className="goal-list-row-top">

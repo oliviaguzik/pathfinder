@@ -54,7 +54,7 @@ export default function Popover({ label, children, onClear, clearLabel = "Clear"
         <button
           type="button"
           ref={triggerRef}
-          className={`popover-trigger ${onClear ? "has-clear" : ""}`}
+          className="popover-trigger"
           aria-haspopup="true"
           aria-expanded={open}
           onClick={toggle}

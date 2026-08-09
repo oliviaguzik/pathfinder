@@ -1,10 +1,19 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { supabase } from "../lib/supabaseClient";
 import Select from "./components/Select";
 import Modal from "./components/Modal";
 import Popover from "./components/Popover";
+import {
+  RECURRENCE_PRESET_OPTIONS,
+  presetFromRecurrence,
+  recurrenceFromPreset,
+  recurrenceLabel,
+  nextOccurrence,
+} from "../lib/recurrence";
+import { computeGoalCompletionPatch } from "../lib/goalCompletion";
+import { positionBetween, nextPosition, sortByPosition } from "../lib/reorder";
 
 // Date-only strings (YYYY-MM-DD) parse as UTC midnight by default, which drifts
 // to the wrong local calendar day near midnight. Anchor to local midnight instead.
@@ -58,7 +67,7 @@ const PRIORITY_RANK = { High: 0, Medium: 1, Low: 2 };
 
 const EFFORT_RANK = { Small: 0, Medium: 1, Large: 2 };
 
-function sortTasksList(list, sortBy) {
+function sortByCriterion(list, sortBy) {
   if (sortBy === "due") {
     return [...list].sort((a, b) => {
       if (!a.due_date && !b.due_date) return 0;
@@ -79,7 +88,21 @@ function sortTasksList(list, sortBy) {
   if (sortBy === "newest") {
     return [...list].sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
   }
+  if (sortBy === "custom") {
+    return sortByPosition(list);
+  }
   return list;
+}
+
+// Completed tasks always sink to the bottom, regardless of the active sort.
+function sortTasksList(list, sortBy) {
+  const notDone = list.filter((t) => t.status !== "Done");
+  const done = list.filter((t) => t.status === "Done");
+  return [...sortByCriterion(notDone, sortBy), ...sortByCriterion(done, sortBy)];
+}
+
+function sortDoneLast(list) {
+  return [...list].sort((a, b) => (a.status === "Done") - (b.status === "Done"));
 }
 
 const WEEKDAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
@@ -96,6 +119,8 @@ export default function TasksPage() {
 
   const [view, setView] = useState("list");
   const [calendarDate, setCalendarDate] = useState(new Date());
+  const calendarMainRef = useRef(null);
+  const [calendarSideMaxHeight, setCalendarSideMaxHeight] = useState(null);
 
   const [name, setName] = useState("");
   const [category, setCategory] = useState("General Life");
@@ -103,6 +128,9 @@ export default function TasksPage() {
   const [priority, setPriority] = useState("Medium");
   const [effort, setEffort] = useState("Medium");
   const [dueDate, setDueDate] = useState("");
+  const [recurring, setRecurring] = useState(false);
+  const [recurrencePreset, setRecurrencePreset] = useState("daily");
+  const [recurrenceCustomDays, setRecurrenceCustomDays] = useState("2");
 
   const [editingId, setEditingId] = useState(null);
   const [editName, setEditName] = useState("");
@@ -111,6 +139,12 @@ export default function TasksPage() {
   const [editPriority, setEditPriority] = useState("Medium");
   const [editEffort, setEditEffort] = useState("Medium");
   const [editDueDate, setEditDueDate] = useState("");
+  const [editRecurring, setEditRecurring] = useState(false);
+  const [editRecurrencePreset, setEditRecurrencePreset] = useState("daily");
+  const [editRecurrenceCustomDays, setEditRecurrenceCustomDays] = useState("2");
+
+  const [draggedTaskId, setDraggedTaskId] = useState(null);
+  const [dragOverTaskId, setDragOverTaskId] = useState(null);
 
   useEffect(() => {
     const stored = localStorage.getItem("tasksView");
@@ -137,9 +171,25 @@ export default function TasksPage() {
     loadData();
   }, []);
 
+  // Cap the "No due date" panel's height to match the calendar's actual rendered
+  // height (measured, since CSS grid/flex stretch alone can't reliably do this —
+  // a tall unbounded list inflates the shared row height instead of being capped by it).
+  useEffect(() => {
+    if (view !== "calendar") return;
+    function measure() {
+      if (calendarMainRef.current) {
+        setCalendarSideMaxHeight(calendarMainRef.current.offsetHeight);
+      }
+    }
+    measure();
+    window.addEventListener("resize", measure);
+    return () => window.removeEventListener("resize", measure);
+  }, [view, calendarDate, tasks]);
+
   async function addTask(e) {
     e.preventDefault();
     if (!name.trim()) return;
+    const recurrence = recurring ? recurrenceFromPreset(recurrencePreset, recurrenceCustomDays) : null;
     await supabase.from("tasks").insert({
       name,
       category,
@@ -148,20 +198,59 @@ export default function TasksPage() {
       effort,
       due_date: dueDate || null,
       status: "To Do",
+      recurring,
+      recurrence_unit: recurrence?.unit || null,
+      recurrence_interval: recurrence?.interval || 1,
+      position: nextPosition(tasks),
     });
     setName("");
     setDueDate("");
+    setRecurring(false);
+    setRecurrencePreset("daily");
+    setRecurrenceCustomDays("2");
     loadData();
   }
 
   async function toggleDone(task) {
     const newStatus = task.status === "Done" ? "To Do" : "Done";
     await supabase.from("tasks").update({ status: newStatus }).eq("id", task.id);
+    if (newStatus === "Done" && task.recurring) {
+      await supabase.from("tasks").insert(nextOccurrence(task, toISODateLocal, parseLocalDate));
+    }
+    if (task.goal_id) {
+      const goal = goals.find((g) => g.id === task.goal_id);
+      const goalTasksAfter = tasks
+        .filter((t) => t.goal_id === task.goal_id)
+        .map((t) => (t.id === task.id ? { ...t, status: newStatus } : t));
+      const patch = computeGoalCompletionPatch(goal, goalTasksAfter);
+      if (patch) {
+        await supabase.from("goals").update(patch).eq("id", task.goal_id);
+      }
+    }
     loadData();
   }
 
   async function deleteTask(id) {
     await supabase.from("tasks").delete().eq("id", id);
+    loadData();
+  }
+
+  async function moveTaskToDate(taskId, dueDateStr) {
+    await supabase.from("tasks").update({ due_date: dueDateStr }).eq("id", taskId);
+    loadData();
+  }
+
+  async function reorderTask(draggedId, targetId, placeAfter) {
+    if (!draggedId || draggedId === targetId) return;
+    const ordered = sortedVisibleTasks.filter((t) => t.id !== draggedId);
+    const targetIndex = ordered.findIndex((t) => t.id === targetId);
+    if (targetIndex === -1) return;
+    const insertIndex = placeAfter ? targetIndex + 1 : targetIndex;
+    const prev = ordered[insertIndex - 1];
+    const next = ordered[insertIndex];
+    const newPosition = positionBetween(prev?.position, next?.position);
+    await supabase.from("tasks").update({ position: newPosition }).eq("id", draggedId);
+    if (sortBy !== "custom") setSortBy("custom");
     loadData();
   }
 
@@ -173,6 +262,9 @@ export default function TasksPage() {
     setEditPriority(task.priority || "Medium");
     setEditEffort(task.effort || "Medium");
     setEditDueDate(task.due_date || "");
+    setEditRecurring(!!task.recurring);
+    setEditRecurrencePreset(presetFromRecurrence(task.recurrence_unit || "day", task.recurrence_interval || 1));
+    setEditRecurrenceCustomDays(String(task.recurrence_interval || 2));
   }
 
   function cancelEditTask() {
@@ -181,6 +273,7 @@ export default function TasksPage() {
 
   async function saveEditTask(id) {
     if (!editName.trim()) return;
+    const recurrence = editRecurring ? recurrenceFromPreset(editRecurrencePreset, editRecurrenceCustomDays) : null;
     await supabase.from("tasks").update({
       name: editName,
       category: editCategory,
@@ -188,6 +281,9 @@ export default function TasksPage() {
       priority: editPriority,
       effort: editEffort,
       due_date: editDueDate || null,
+      recurring: editRecurring,
+      recurrence_unit: recurrence?.unit || null,
+      recurrence_interval: recurrence?.interval || 1,
     }).eq("id", id);
     setEditingId(null);
     loadData();
@@ -250,7 +346,49 @@ export default function TasksPage() {
           <label>Due date</label>
           <input type="date" value={editDueDate} onChange={(e) => setEditDueDate(e.target.value)} />
         </div>
+        <div className="field field-recurring">
+          <label>Recurring</label>
+          <input
+            type="checkbox"
+            className="checkbox"
+            checked={editRecurring}
+            onChange={(e) => {
+              setEditRecurring(e.target.checked);
+              if (!e.target.checked) {
+                setEditRecurrencePreset("daily");
+                setEditRecurrenceCustomDays("2");
+              }
+            }}
+          />
+        </div>
+        {editRecurring && (
+          <div className="field field-repeats">
+            <label>Repeats</label>
+            <Select value={editRecurrencePreset} onChange={setEditRecurrencePreset} options={RECURRENCE_PRESET_OPTIONS} />
+          </div>
+        )}
+        {editRecurring && editRecurrencePreset === "custom" && (
+          <div className="field">
+            <label>Every N days</label>
+            <input
+              type="number"
+              min="1"
+              value={editRecurrenceCustomDays}
+              onChange={(e) => setEditRecurrenceCustomDays(e.target.value)}
+            />
+          </div>
+        )}
         <div className="form-actions">
+          <button
+            className="danger"
+            style={{ marginRight: "auto" }}
+            onClick={() => {
+              deleteTask(idForSave);
+              cancelEditTask();
+            }}
+          >
+            Delete
+          </button>
           <button className="primary" onClick={() => saveEditTask(idForSave)}>Save</button>
           <button onClick={cancelEditTask}>Cancel</button>
         </div>
@@ -260,7 +398,40 @@ export default function TasksPage() {
 
   function renderTaskRow(t) {
     return (
-      <div className="task-row" key={t.id}>
+      <div
+        className={`task-row ${dragOverTaskId === t.id ? "drag-over" : ""}`}
+        key={t.id}
+        onDragOver={(e) => {
+          if (!draggedTaskId) return;
+          e.preventDefault();
+          setDragOverTaskId(t.id);
+        }}
+        onDragLeave={() => setDragOverTaskId((id) => (id === t.id ? null : id))}
+        onDrop={(e) => {
+          e.preventDefault();
+          setDragOverTaskId(null);
+          const rect = e.currentTarget.getBoundingClientRect();
+          const placeAfter = e.clientY > rect.top + rect.height / 2;
+          reorderTask(draggedTaskId, t.id, placeAfter);
+          setDraggedTaskId(null);
+        }}
+      >
+        <span
+          className="drag-handle"
+          draggable
+          onDragStart={(e) => {
+            e.dataTransfer.effectAllowed = "move";
+            setDraggedTaskId(t.id);
+          }}
+          onDragEnd={() => {
+            setDraggedTaskId(null);
+            setDragOverTaskId(null);
+          }}
+          aria-label="Drag to reorder"
+          title="Drag to reorder"
+        >
+          ⠿
+        </span>
         <input
           type="checkbox"
           className="checkbox"
@@ -273,6 +444,9 @@ export default function TasksPage() {
             <span className="muted"> — {goalName(t.goal_id)}</span>
           )}
         </span>
+        {t.recurring && (
+          <span className="muted recurring-icon" title={recurrenceLabel(t)}>↻</span>
+        )}
         <span className={`badge badge-${t.priority?.toLowerCase()}`}>Priority: {t.priority}</span>
         {t.effort && (
           <span className="muted effort-abbr" title={`Effort: ${t.effort}`}>{t.effort.charAt(0)}</span>
@@ -290,6 +464,35 @@ export default function TasksPage() {
     );
   }
 
+  function renderUndatedTaskRow(t) {
+    return (
+      <div
+        className="undated-task-row"
+        key={t.id}
+        draggable
+        onDragStart={(e) => {
+          e.dataTransfer.effectAllowed = "move";
+          setDraggedTaskId(t.id);
+        }}
+        onDragEnd={() => setDraggedTaskId(null)}
+      >
+        <input
+          type="checkbox"
+          className="checkbox"
+          checked={t.status === "Done"}
+          onChange={() => toggleDone(t)}
+        />
+        <span
+          className={`undated-task-name ${t.status === "Done" ? "done" : ""}`}
+          onClick={() => startEditTask(t)}
+        >
+          {t.name}
+        </span>
+        <button className="ghost row-delete-btn" onClick={() => deleteTask(t.id)} aria-label="Delete task">×</button>
+      </div>
+    );
+  }
+
   const year = calendarDate.getFullYear();
   const month = calendarDate.getMonth();
   const monthLabel = calendarDate.toLocaleDateString(undefined, { month: "long", year: "numeric" });
@@ -297,13 +500,17 @@ export default function TasksPage() {
   const today = new Date();
 
   const tasksByDate = {};
-  const undatedTasks = [];
+  const undatedTasksRaw = [];
   for (const t of visibleTasks) {
     if (!t.due_date) {
-      undatedTasks.push(t);
+      undatedTasksRaw.push(t);
       continue;
     }
     (tasksByDate[t.due_date] ||= []).push(t);
+  }
+  const undatedTasks = sortDoneLast(undatedTasksRaw);
+  for (const key of Object.keys(tasksByDate)) {
+    tasksByDate[key] = sortDoneLast(tasksByDate[key]);
   }
 
   return (
@@ -354,6 +561,45 @@ export default function TasksPage() {
           <label htmlFor="task-due">Due date</label>
           <input id="task-due" type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} />
         </div>
+        <div className="field field-recurring">
+          <label htmlFor="task-recurring">Recurring</label>
+          <input
+            id="task-recurring"
+            type="checkbox"
+            className="checkbox"
+            checked={recurring}
+            onChange={(e) => {
+              setRecurring(e.target.checked);
+              if (!e.target.checked) {
+                setRecurrencePreset("daily");
+                setRecurrenceCustomDays("2");
+              }
+            }}
+          />
+        </div>
+        {recurring && (
+          <div className="field field-repeats">
+            <label htmlFor="task-repeats">Repeats</label>
+            <Select
+              id="task-repeats"
+              value={recurrencePreset}
+              onChange={setRecurrencePreset}
+              options={RECURRENCE_PRESET_OPTIONS}
+            />
+          </div>
+        )}
+        {recurring && recurrencePreset === "custom" && (
+          <div className="field">
+            <label htmlFor="task-repeats-days">Every N days</label>
+            <input
+              id="task-repeats-days"
+              type="number"
+              min="1"
+              value={recurrenceCustomDays}
+              onChange={(e) => setRecurrenceCustomDays(e.target.value)}
+            />
+          </div>
+        )}
         <div className="form-actions">
           <button type="submit" className="primary">Add task</button>
         </div>
@@ -435,6 +681,7 @@ export default function TasksPage() {
                   { value: "effort", label: "Effort" },
                   { value: "newest", label: "Newest" },
                   { value: "oldest", label: "Oldest" },
+                  { value: "custom", label: "Custom (drag to reorder)" },
                 ]}
                 onClear={sortBy !== "due" ? () => setSortBy("due") : undefined}
                 clearLabel="Clear sort"
@@ -481,7 +728,7 @@ export default function TasksPage() {
         </div>
       ) : (
         <div className="calendar-wrap">
-          <div className="card calendar-main">
+          <div className="card calendar-main" ref={calendarMainRef}>
             <div className="calendar-header">
               <div className="row" style={{ gap: 4 }}>
                 <button
@@ -508,15 +755,34 @@ export default function TasksPage() {
               ))}
               {grid.map(({ date, outside }) => {
                 const dayTasks = tasksByDate[toISODateLocal(date)] || [];
+                const cellDateStr = toISODateLocal(date);
                 return (
                   <div
-                    className={`calendar-cell ${outside ? "outside" : ""} ${isSameDay(date, today) ? "today" : ""}`}
+                    className={`calendar-cell ${outside ? "outside" : ""} ${isSameDay(date, today) ? "today" : ""} ${draggedTaskId ? "drop-target" : ""}`}
                     key={date.toISOString()}
+                    onDragOver={(e) => {
+                      if (!draggedTaskId) return;
+                      e.preventDefault();
+                    }}
+                    onDrop={(e) => {
+                      e.preventDefault();
+                      if (draggedTaskId) moveTaskToDate(draggedTaskId, cellDateStr);
+                      setDraggedTaskId(null);
+                    }}
                   >
                     <div className="calendar-date">{date.getDate()}</div>
                     <div className="calendar-cell-tasks">
                       {dayTasks.map((t) => (
-                        <div className="calendar-task" key={t.id}>
+                        <div
+                          className="calendar-task"
+                          key={t.id}
+                          draggable
+                          onDragStart={(e) => {
+                            e.dataTransfer.effectAllowed = "move";
+                            setDraggedTaskId(t.id);
+                          }}
+                          onDragEnd={() => setDraggedTaskId(null)}
+                        >
                           <input
                             type="checkbox"
                             className="checkbox"
@@ -538,11 +804,27 @@ export default function TasksPage() {
             </div>
           </div>
 
-          <div className="card calendar-side">
+          <div
+            className="card calendar-side"
+            style={calendarSideMaxHeight ? { maxHeight: calendarSideMaxHeight } : undefined}
+          >
             <div className="section-label">No due date</div>
-            {loading && <p className="muted">Loading...</p>}
-            {!loading && undatedTasks.length === 0 && <p className="muted">Nothing here.</p>}
-            {undatedTasks.map((t) => renderTaskRow(t))}
+            <div
+              className={`calendar-side-list ${draggedTaskId ? "drop-target" : ""}`}
+              onDragOver={(e) => {
+                if (!draggedTaskId) return;
+                e.preventDefault();
+              }}
+              onDrop={(e) => {
+                e.preventDefault();
+                if (draggedTaskId) moveTaskToDate(draggedTaskId, null);
+                setDraggedTaskId(null);
+              }}
+            >
+              {loading && <p className="muted">Loading...</p>}
+              {!loading && undatedTasks.length === 0 && <p className="muted">Nothing here.</p>}
+              {undatedTasks.map((t) => renderUndatedTaskRow(t))}
+            </div>
           </div>
         </div>
       )}
