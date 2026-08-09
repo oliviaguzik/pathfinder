@@ -14,6 +14,7 @@ import {
 } from "../../lib/recurrence";
 import { isGoalFullyDone, computeGoalCompletionPatch } from "../../lib/goalCompletion";
 import { positionBetween, nextPosition, sortByPosition } from "../../lib/reorder";
+import { useAuth } from "../../lib/AuthProvider";
 
 // Date-only strings (YYYY-MM-DD) parse as UTC midnight by default, which drifts
 // to the wrong local calendar day near midnight. Anchor them to local midnight instead.
@@ -30,6 +31,7 @@ function todayLocalISODate() {
 }
 
 export default function GoalsPage() {
+  const { user } = useAuth();
   const [goals, setGoals] = useState([]);
   const [tasks, setTasks] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -101,6 +103,7 @@ export default function GoalsPage() {
       start_date: todayLocalISODate(),
       status: "In Progress",
       position: nextPosition(goals),
+      user_id: user.id,
     });
     setName("");
     setTargetDate("");
@@ -182,6 +185,7 @@ export default function GoalsPage() {
       recurring: taskRecurring,
       recurrence_unit: recurrence?.unit || null,
       recurrence_interval: recurrence?.interval || 1,
+      user_id: user.id,
     });
     setTaskName("");
     setTaskDueDate("");
@@ -226,7 +230,7 @@ export default function GoalsPage() {
     const newStatus = task.status === "Done" ? "To Do" : "Done";
     await supabase.from("tasks").update({ status: newStatus }).eq("id", task.id);
     if (newStatus === "Done" && task.recurring) {
-      await supabase.from("tasks").insert(nextOccurrence(task, toISODateLocal, parseLocalDate));
+      await supabase.from("tasks").insert({ ...nextOccurrence(task, toISODateLocal, parseLocalDate), user_id: user.id });
     }
     if (task.goal_id) {
       const goal = goals.find((g) => g.id === task.goal_id);

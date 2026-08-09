@@ -2,9 +2,11 @@
 
 import { usePathname } from "next/navigation";
 import ThemeToggle from "./ThemeToggle";
+import { useAuth } from "../../lib/AuthProvider";
 
 export default function NavBar() {
   const pathname = usePathname();
+  const { user, signOut } = useAuth();
 
   return (
     <nav className="topnav">
@@ -15,6 +17,11 @@ export default function NavBar() {
           <a href="/goals" className={pathname === "/goals" ? "active" : ""}>Goals</a>
         </div>
         <ThemeToggle />
+        {user && (
+          <button className="ghost" onClick={signOut} title={user.email}>
+            Sign out
+          </button>
+        )}
       </div>
     </nav>
   );

@@ -44,6 +44,43 @@ body {
   transition: background 0.15s, color 0.15s;
 }
 
+.auth-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100vh;
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.login-screen {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100vh;
+  padding: 24px;
+}
+.login-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-md);
+  padding: 40px;
+  width: 100%;
+  max-width: 340px;
+  text-align: center;
+}
+.google-signin-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  width: 100%;
+  padding: 10px 16px;
+  font-size: 14px;
+  font-weight: 500;
+}
+
 .topnav {
   display: flex;
   align-items: center;
@@ -71,7 +108,7 @@ body {
 .navlinks a:hover { color: var(--text); background: var(--bg); }
 .navlinks a.active { color: var(--text); background: var(--border-soft); }
 
-.container { max-width: 1560px; margin: 0 auto; padding: 32px 32px 64px; }
+.container { max-width: 1400px; margin: 0 auto; padding: 32px 32px 64px; }
 
 h1 { font-size: 24px; font-weight: 700; margin: 0 0 4px; letter-spacing: -0.01em; }
 .page-sub { color: var(--muted); font-size: 14px; margin: 0 0 24px; }

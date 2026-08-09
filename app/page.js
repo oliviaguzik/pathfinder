@@ -14,6 +14,7 @@ import {
 } from "../lib/recurrence";
 import { computeGoalCompletionPatch } from "../lib/goalCompletion";
 import { positionBetween, nextPosition, sortByPosition } from "../lib/reorder";
+import { useAuth } from "../lib/AuthProvider";
 
 // Date-only strings (YYYY-MM-DD) parse as UTC midnight by default, which drifts
 // to the wrong local calendar day near midnight. Anchor to local midnight instead.
@@ -108,6 +109,7 @@ function sortDoneLast(list) {
 const WEEKDAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
 export default function TasksPage() {
+  const { user } = useAuth();
   const [tasks, setTasks] = useState([]);
   const [goals, setGoals] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -202,6 +204,7 @@ export default function TasksPage() {
       recurrence_unit: recurrence?.unit || null,
       recurrence_interval: recurrence?.interval || 1,
       position: nextPosition(tasks),
+      user_id: user.id,
     });
     setName("");
     setDueDate("");
@@ -215,7 +218,7 @@ export default function TasksPage() {
     const newStatus = task.status === "Done" ? "To Do" : "Done";
     await supabase.from("tasks").update({ status: newStatus }).eq("id", task.id);
     if (newStatus === "Done" && task.recurring) {
-      await supabase.from("tasks").insert(nextOccurrence(task, toISODateLocal, parseLocalDate));
+      await supabase.from("tasks").insert({ ...nextOccurrence(task, toISODateLocal, parseLocalDate), user_id: user.id });
     }
     if (task.goal_id) {
       const goal = goals.find((g) => g.id === task.goal_id);

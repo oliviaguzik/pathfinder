@@ -11,6 +11,7 @@ create table goals (
   notes text,
   completed_at timestamp with time zone,
   position double precision,
+  user_id uuid references auth.users(id),
   created_at timestamp with time zone default now()
 );
 
@@ -29,13 +30,17 @@ create table tasks (
   recurrence_unit text, -- day | week | month (interpreted with recurrence_interval)
   recurrence_interval integer default 1,
   position double precision,
+  user_id uuid references auth.users(id),
   created_at timestamp with time zone default now()
 );
 
--- For a personal single-user project, allow full access with the anon key.
--- (If you add login/auth later, replace these with per-user policies.)
+-- Auth is Google sign-in via Supabase Auth. Each row is owned by the signed-in
+-- user, and RLS restricts every operation to rows matching their own user_id.
 alter table goals enable row level security;
 alter table tasks enable row level security;
 
-create policy "allow all on goals" on goals for all using (true) with check (true);
-create policy "allow all on tasks" on tasks for all using (true) with check (true);
+create policy "users manage their own goals" on goals
+  for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
+
+create policy "users manage their own tasks" on tasks
+  for all using (auth.uid() = user_id) with check (auth.uid() = user_id);

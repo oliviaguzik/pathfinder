@@ -1,5 +1,5 @@
 import "./globals.css";
-import NavBar from "./components/NavBar";
+import AuthGate from "./components/AuthGate";
 
 export const metadata = {
   title: "PathFinder",
@@ -23,8 +23,7 @@ export default function RootLayout({ children }) {
         <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
       </head>
       <body>
-        <NavBar />
-        <main className="container">{children}</main>
+        <AuthGate>{children}</AuthGate>
       </body>
     </html>
   );
