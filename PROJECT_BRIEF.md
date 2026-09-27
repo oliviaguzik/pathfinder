@@ -17,7 +17,7 @@ Next.js app with a Supabase (Postgres) backend, deployed on Vercel.
 - Deployed on Vercel (auto-deploys from GitHub on push to `main`)
 
 ## Data model (see schema.sql)
-**goals**: id, name, status (Not Started / In Progress / Achieved), start_date,
+**goals**: id, name, status (Not Started / In Progress / Completed), start_date,
 target_date, notes, completed_at, position (for manual drag ordering), user_id,
 created_at
 
@@ -54,8 +54,9 @@ and writes to `auth.uid() = user_id`, and every insert in the app sets
 - Completed tasks always sink to the bottom regardless of sort/view
 
 **Goals page** (`app/goals/page.js`)
-- Add/edit/delete goals (name, target date); deleting a goal with linked
-  tasks prompts to either unlink or cascade-delete them
+- Add/edit/delete goals (name, target date, notes); deleting a goal with
+  linked tasks prompts to either unlink or cascade-delete them
+- Notes show on the goal card (grid) or in the expanded row (list)
 - Each goal shown as a card with a **circular SVG progress ring**
   (`CircularProgress.js`) showing % of linked tasks done — this replaced the
   original linear bar per the earlier design request
@@ -74,6 +75,12 @@ and writes to `auth.uid() = user_id`, and every insert in the app sets
 - Dark/light theme toggle
 - Reusable `Modal`, `Popover`, and custom `Select` components for consistent
   styling (native `<select>` was replaced)
+- `TaskFields` is the single add/edit task form used on both pages (form
+  state mapping in `lib/taskForm.js`), so new task fields go in one place
+- Date helpers in `lib/dates.js`; unit tests for `lib/` via `npm test` (Vitest)
+- Database enforces allowed values with check constraints, requires
+  `user_id` (defaults to `auth.uid()`), and indexes `user_id` / `goal_id`.
+  Changes to an existing database go in `migrations/`
 
 ## Design direction / visual preference
 Clean, minimal, native-feeling UI — white cards, subtle borders, small badges
@@ -85,17 +92,12 @@ goal cards and list rows.
 - **Context tag UI** (@home/@errand/@computer/@calls) — the `context` column
   exists on `tasks` but there is no picker in the add/edit forms and no
   filter for it. This is the only remaining item from the original roadmap.
-- Goal `notes` field exists in the schema but has no UI.
-- Goal `status` field (Not Started/In Progress/Achieved) exists but isn't
-  surfaced or editable directly — the pace label covers similar ground.
+- Goal `status` field (Not Started/In Progress/Completed) isn't shown in the
+  UI, but the app keeps it in sync with what the goal card shows: Completed
+  once finished, In Progress once any linked task is done, otherwise Not
+  Started (`lib/goalCompletion.js`).
 
 ## Origin note
 This app is a from-scratch rebuild of a template I originally built in
 Notion (using the Notion API) — the goal/task/category/priority/effort
 structure mirrors that Notion setup, adapted into a real relational schema.
-
-## Note on repo docs
-`README.md` still describes an earlier state of the project (pre-auth,
-pre-calendar, pre-recurring, add/complete/delete-only) and should be treated
-as outdated setup instructions rather than a feature list — this file is the
-source of truth for current status.

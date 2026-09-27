@@ -185,7 +185,7 @@ h1 { font-size: 28px; font-weight: 800; margin: 0 0 4px; letter-spacing: -0.02em
   color: var(--muted);
   margin-bottom: 6px;
 }
-.field select, .field input:not([type="checkbox"]) { width: 100%; }
+.field select, .field input:not([type="checkbox"]), .field textarea { width: 100%; }
 .field input[type="checkbox"] { margin-top: 9px; }
 .field-recurring { margin-left: 8px; }
 .field-repeats { margin-left: -8px; }
@@ -370,7 +370,7 @@ h1 { font-size: 28px; font-weight: 800; margin: 0 0 4px; letter-spacing: -0.02em
 .select-option.active { background: var(--bg); }
 .select-option.selected { font-weight: 600; }
 
-select, input[type="text"], input[type="date"], input[type="number"] {
+select, input[type="text"], input[type="date"], input[type="number"], textarea {
   padding: 10px 12px;
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
@@ -380,7 +380,7 @@ select, input[type="text"], input[type="date"], input[type="number"] {
   background: var(--surface);
   transition: border-color 0.15s, box-shadow 0.15s;
 }
-select:focus, input:focus {
+select:focus, input:focus, textarea:focus {
   outline: none;
   border-color: var(--accent);
   box-shadow: 0 0 0 3px var(--accent-soft);
@@ -857,6 +857,15 @@ button.danger:hover { background: #fdf2f2; border-color: var(--danger); }
 }
 
 .goal-tile-name { font-size: 15px; font-weight: 700; }
+textarea { resize: vertical; line-height: 1.45; }
+.goal-notes {
+  margin-bottom: 0;
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--text);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
 .goal-tile-full { display: flex; flex-direction: column; padding: 16px; }
 
 .tile-tasks-box {

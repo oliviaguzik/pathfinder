@@ -4,34 +4,16 @@ import { useEffect, useState } from "react";
 import { supabase } from "../../lib/supabaseClient";
 import CircularProgress from "../components/CircularProgress";
 import Modal from "../components/Modal";
-import Select from "../components/Select";
 import Celebration from "../components/Celebration";
 import Skeleton from "../components/Skeleton";
 import Icon from "../components/Icon";
-import {
-  RECURRENCE_PRESET_OPTIONS,
-  presetFromRecurrence,
-  recurrenceFromPreset,
-  recurrenceLabel,
-  nextOccurrence,
-} from "../../lib/recurrence";
-import { computeGoalUncompletionPatch } from "../../lib/goalCompletion";
+import TaskFields from "../components/TaskFields";
+import { recurrenceLabel, nextOccurrence } from "../../lib/recurrence";
+import { goalStatusFor, syncGoalStatuses } from "../../lib/goalCompletion";
 import { positionBetween, nextPosition, sortByPosition } from "../../lib/reorder";
+import { parseLocalDate, toISODateLocal, todayLocalISODate } from "../../lib/dates";
+import { EMPTY_TASK_FORM, taskFormFromTask, taskFieldsFromForm } from "../../lib/taskForm";
 import { useAuth } from "../../lib/AuthProvider";
-
-// Date-only strings (YYYY-MM-DD) parse as UTC midnight by default, which drifts
-// to the wrong local calendar day near midnight. Anchor them to local midnight instead.
-function parseLocalDate(dateStr) {
-  return new Date(`${dateStr}T00:00:00`);
-}
-
-function toISODateLocal(date) {
-  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
-}
-
-function todayLocalISODate() {
-  return toISODateLocal(new Date());
-}
 
 export default function GoalsPage() {
   const { user } = useAuth();
@@ -42,6 +24,7 @@ export default function GoalsPage() {
   const [addOpen, setAddOpen] = useState(false);
   const [name, setName] = useState("");
   const [targetDate, setTargetDate] = useState("");
+  const [notes, setNotes] = useState("");
 
   const [view, setView] = useState("grid");
   const [listExpanded, setListExpanded] = useState({});
@@ -49,25 +32,14 @@ export default function GoalsPage() {
   const [editingGoalId, setEditingGoalId] = useState(null);
   const [editName, setEditName] = useState("");
   const [editTargetDate, setEditTargetDate] = useState("");
+  const [editNotes, setEditNotes] = useState("");
   const [confirmingDeleteId, setConfirmingDeleteId] = useState(null);
 
   const [addTaskForId, setAddTaskForId] = useState(null);
-  const [taskName, setTaskName] = useState("");
-  const [taskPriority, setTaskPriority] = useState("");
-  const [taskEffort, setTaskEffort] = useState("");
-  const [taskDueDate, setTaskDueDate] = useState("");
-  const [taskRecurring, setTaskRecurring] = useState(false);
-  const [taskRecurrencePreset, setTaskRecurrencePreset] = useState("daily");
-  const [taskRecurrenceCustomDays, setTaskRecurrenceCustomDays] = useState("2");
+  const [newTask, setNewTask] = useState(EMPTY_TASK_FORM);
 
   const [editingTaskId, setEditingTaskId] = useState(null);
-  const [editTaskName, setEditTaskName] = useState("");
-  const [editTaskPriority, setEditTaskPriority] = useState("Medium");
-  const [editTaskEffort, setEditTaskEffort] = useState("Medium");
-  const [editTaskDueDate, setEditTaskDueDate] = useState("");
-  const [editTaskRecurring, setEditTaskRecurring] = useState(false);
-  const [editTaskRecurrencePreset, setEditTaskRecurrencePreset] = useState("daily");
-  const [editTaskRecurrenceCustomDays, setEditTaskRecurrenceCustomDays] = useState("2");
+  const [editTaskForm, setEditTaskForm] = useState(EMPTY_TASK_FORM);
 
   const [confirmingDeleteTaskId, setConfirmingDeleteTaskId] = useState(null);
   const [draggedGoalId, setDraggedGoalId] = useState(null);
@@ -107,13 +79,15 @@ export default function GoalsPage() {
     await supabase.from("goals").insert({
       name,
       target_date: targetDate || null,
+      notes: notes.trim() || null,
       start_date: todayLocalISODate(),
-      status: "In Progress",
+      status: "Not Started",
       position: nextPosition(goals),
       user_id: user.id,
     });
     setName("");
     setTargetDate("");
+    setNotes("");
     setAddOpen(false);
     loadData();
   }
@@ -126,6 +100,7 @@ export default function GoalsPage() {
     setEditingGoalId(goal.id);
     setEditName(goal.name);
     setEditTargetDate(goal.target_date || "");
+    setEditNotes(goal.notes || "");
   }
 
   function cancelEditGoal() {
@@ -137,6 +112,7 @@ export default function GoalsPage() {
     await supabase.from("goals").update({
       name: editName,
       target_date: editTargetDate || null,
+      notes: editNotes.trim() || null,
     }).eq("id", id);
     setEditingGoalId(null);
     loadData();
@@ -168,47 +144,26 @@ export default function GoalsPage() {
 
   function toggleAddTaskFor(goalId) {
     setAddTaskForId((prev) => (prev === goalId ? null : goalId));
-    setTaskName("");
-    setTaskPriority("");
-    setTaskEffort("");
-    setTaskDueDate("");
-    setTaskRecurring(false);
-    setTaskRecurrencePreset("daily");
-    setTaskRecurrenceCustomDays("2");
+    setNewTask(EMPTY_TASK_FORM);
   }
 
   async function addTaskToGoal(e, goalId) {
     e.preventDefault();
-    if (!taskName.trim()) return;
-    const recurrence = taskRecurring ? recurrenceFromPreset(taskRecurrencePreset, taskRecurrenceCustomDays) : null;
+    if (!newTask.name.trim()) return;
     await supabase.from("tasks").insert({
-      name: taskName,
+      ...taskFieldsFromForm(newTask),
       category: "Goal-Related",
       goal_id: goalId,
-      priority: taskPriority || null,
-      effort: taskEffort || null,
-      due_date: taskDueDate || null,
       status: "To Do",
-      recurring: taskRecurring,
-      recurrence_unit: recurrence?.unit || null,
-      recurrence_interval: recurrence?.interval || 1,
       user_id: user.id,
     });
-    setTaskName("");
-    setTaskDueDate("");
     setAddTaskForId(null);
     loadData();
   }
 
   function startEditTask(task) {
     setEditingTaskId(task.id);
-    setEditTaskName(task.name);
-    setEditTaskPriority(task.priority || "");
-    setEditTaskEffort(task.effort || "");
-    setEditTaskDueDate(task.due_date || "");
-    setEditTaskRecurring(!!task.recurring);
-    setEditTaskRecurrencePreset(presetFromRecurrence(task.recurrence_unit || "day", task.recurrence_interval || 1));
-    setEditTaskRecurrenceCustomDays(String(task.recurrence_interval || 2));
+    setEditTaskForm(taskFormFromTask(task));
   }
 
   function cancelEditTask() {
@@ -216,19 +171,8 @@ export default function GoalsPage() {
   }
 
   async function saveEditTask(id) {
-    if (!editTaskName.trim()) return;
-    const recurrence = editTaskRecurring
-      ? recurrenceFromPreset(editTaskRecurrencePreset, editTaskRecurrenceCustomDays)
-      : null;
-    await supabase.from("tasks").update({
-      name: editTaskName,
-      priority: editTaskPriority || null,
-      effort: editTaskEffort || null,
-      due_date: editTaskDueDate || null,
-      recurring: editTaskRecurring,
-      recurrence_unit: recurrence?.unit || null,
-      recurrence_interval: recurrence?.interval || 1,
-    }).eq("id", id);
+    if (!editTaskForm.name.trim()) return;
+    await supabase.from("tasks").update(taskFieldsFromForm(editTaskForm)).eq("id", id);
     setEditingTaskId(null);
     loadData();
   }
@@ -239,21 +183,15 @@ export default function GoalsPage() {
     if (newStatus === "Done" && task.recurring) {
       await supabase.from("tasks").insert({ ...nextOccurrence(task, toISODateLocal, parseLocalDate), user_id: user.id });
     }
-    if (task.goal_id) {
-      const goal = goals.find((g) => g.id === task.goal_id);
-      const goalTasksAfter = tasks
-        .filter((t) => t.goal_id === task.goal_id)
-        .map((t) => (t.id === task.id ? { ...t, status: newStatus } : t));
-      const patch = computeGoalUncompletionPatch(goal, goalTasksAfter);
-      if (patch) {
-        await supabase.from("goals").update(patch).eq("id", task.goal_id);
-      }
-    }
+    const tasksAfter = tasks.map((t) => (t.id === task.id ? { ...t, status: newStatus } : t));
+    await syncGoalStatuses([task.goal_id], goals, tasksAfter);
     loadData();
   }
 
   async function deleteTask(id) {
+    const task = tasks.find((t) => t.id === id);
     await supabase.from("tasks").delete().eq("id", id);
+    await syncGoalStatuses([task?.goal_id], goals, tasks.filter((t) => t.id !== id));
     loadData();
   }
 
@@ -276,7 +214,7 @@ export default function GoalsPage() {
 
     await supabase
       .from("goals")
-      .update({ completed_at: new Date().toISOString(), status: "Achieved" })
+      .update({ completed_at: new Date().toISOString(), status: "Completed" })
       .eq("id", goal.id);
     setCelebration({
       key: Date.now(),
@@ -291,7 +229,7 @@ export default function GoalsPage() {
   async function reopenGoal(goal) {
     await supabase
       .from("goals")
-      .update({ completed_at: null, status: "In Progress" })
+      .update({ completed_at: null, status: goalStatusFor({ ...goal, completed_at: null }, tasksFor(goal.id)) })
       .eq("id", goal.id);
     loadData();
   }
@@ -374,72 +312,13 @@ export default function GoalsPage() {
   function renderAddTaskForm(goalId) {
     return (
       <form className="form-grid" onSubmit={(e) => addTaskToGoal(e, goalId)}>
-        <div className="field field-full">
-          <label>Task name</label>
-          <input
-            type="text"
-            placeholder="e.g. Practice verbs"
-            value={taskName}
-            onChange={(e) => setTaskName(e.target.value)}
-            autoFocus
-          />
-        </div>
-        <div className="field">
-          <label>Priority</label>
-          <Select
-            value={taskPriority}
-            onChange={setTaskPriority}
-            options={[{ value: "", label: "N/A" }, "High", "Medium", "Low"]}
-            onClear={taskPriority ? () => setTaskPriority("") : undefined}
-            clearLabel="Clear priority"
-          />
-        </div>
-        <div className="field">
-          <label>Effort</label>
-          <Select
-            value={taskEffort}
-            onChange={setTaskEffort}
-            options={[{ value: "", label: "N/A" }, "Small", "Medium", "Large"]}
-            onClear={taskEffort ? () => setTaskEffort("") : undefined}
-            clearLabel="Clear effort"
-          />
-        </div>
-        <div className="field">
-          <label>Due date</label>
-          <input type="date" value={taskDueDate} onChange={(e) => setTaskDueDate(e.target.value)} />
-        </div>
-        <div className="field field-recurring">
-          <label>Recurring</label>
-          <input
-            type="checkbox"
-            className="checkbox"
-            checked={taskRecurring}
-            onChange={(e) => {
-              setTaskRecurring(e.target.checked);
-              if (!e.target.checked) {
-                setTaskRecurrencePreset("daily");
-                setTaskRecurrenceCustomDays("2");
-              }
-            }}
-          />
-        </div>
-        {taskRecurring && (
-          <div className="field field-repeats">
-            <label>Repeats</label>
-            <Select value={taskRecurrencePreset} onChange={setTaskRecurrencePreset} options={RECURRENCE_PRESET_OPTIONS} />
-          </div>
-        )}
-        {taskRecurring && taskRecurrencePreset === "custom" && (
-          <div className="field">
-            <label>Every N days</label>
-            <input
-              type="number"
-              min="1"
-              value={taskRecurrenceCustomDays}
-              onChange={(e) => setTaskRecurrenceCustomDays(e.target.value)}
-            />
-          </div>
-        )}
+        <TaskFields
+          form={newTask}
+          onChange={(patch) => setNewTask((f) => ({ ...f, ...patch }))}
+          idPrefix="goal-task"
+          namePlaceholder="e.g. Practice verbs"
+          autoFocus
+        />
         <div className="form-actions">
           <button type="submit" className="primary">Add task</button>
           <button type="button" onClick={() => toggleAddTaskFor(goalId)}>Cancel</button>
@@ -451,70 +330,12 @@ export default function GoalsPage() {
   function renderEditTaskForm(task) {
     return (
       <div className="form-grid compact" style={{ marginBottom: 0 }}>
-        <div className="field field-full">
-          <label>Task name</label>
-          <input type="text" value={editTaskName} onChange={(e) => setEditTaskName(e.target.value)} autoFocus />
-        </div>
-        <div className="field">
-          <label>Priority</label>
-          <Select
-            value={editTaskPriority}
-            onChange={setEditTaskPriority}
-            options={[{ value: "", label: "N/A" }, "High", "Medium", "Low"]}
-            onClear={editTaskPriority ? () => setEditTaskPriority("") : undefined}
-            clearLabel="Clear priority"
-          />
-        </div>
-        <div className="field">
-          <label>Effort</label>
-          <Select
-            value={editTaskEffort}
-            onChange={setEditTaskEffort}
-            options={[{ value: "", label: "N/A" }, "Small", "Medium", "Large"]}
-            onClear={editTaskEffort ? () => setEditTaskEffort("") : undefined}
-            clearLabel="Clear effort"
-          />
-        </div>
-        <div className="field">
-          <label>Due date</label>
-          <input type="date" value={editTaskDueDate} onChange={(e) => setEditTaskDueDate(e.target.value)} />
-        </div>
-        <div className="field field-recurring">
-          <label>Recurring</label>
-          <input
-            type="checkbox"
-            className="checkbox"
-            checked={editTaskRecurring}
-            onChange={(e) => {
-              setEditTaskRecurring(e.target.checked);
-              if (!e.target.checked) {
-                setEditTaskRecurrencePreset("daily");
-                setEditTaskRecurrenceCustomDays("2");
-              }
-            }}
-          />
-        </div>
-        {editTaskRecurring && (
-          <div className="field field-repeats">
-            <label>Repeats</label>
-            <Select
-              value={editTaskRecurrencePreset}
-              onChange={setEditTaskRecurrencePreset}
-              options={RECURRENCE_PRESET_OPTIONS}
-            />
-          </div>
-        )}
-        {editTaskRecurring && editTaskRecurrencePreset === "custom" && (
-          <div className="field">
-            <label>Every N days</label>
-            <input
-              type="number"
-              min="1"
-              value={editTaskRecurrenceCustomDays}
-              onChange={(e) => setEditTaskRecurrenceCustomDays(e.target.value)}
-            />
-          </div>
-        )}
+        <TaskFields
+          form={editTaskForm}
+          onChange={(patch) => setEditTaskForm((f) => ({ ...f, ...patch }))}
+          idPrefix="edit-goal-task"
+          autoFocus
+        />
         <div className="form-actions">
           <button className="primary" onClick={() => saveEditTask(task.id)}>Save</button>
           <button onClick={cancelEditTask}>Cancel</button>
@@ -572,6 +393,10 @@ export default function GoalsPage() {
             <label>Target date</label>
             <input type="date" value={editTargetDate} onChange={(e) => setEditTargetDate(e.target.value)} />
           </div>
+          <div className="field field-full">
+            <label>Notes</label>
+            <textarea rows={3} value={editNotes} onChange={(e) => setEditNotes(e.target.value)} />
+          </div>
           <div className="form-actions">
             <button className="primary" onClick={() => saveEditGoal(g.id)}>Save</button>
             <button onClick={cancelEditGoal}>Cancel</button>
@@ -599,7 +424,9 @@ export default function GoalsPage() {
           </>
         )}
 
-        <div className="row-between" style={{ marginTop: showHeader ? 10 : 0, flexWrap: "wrap", gap: 8 }}>
+        {g.notes && <p className="goal-notes" style={{ marginTop: showHeader ? 10 : 0 }}>{g.notes}</p>}
+
+        <div className="row-between" style={{ marginTop: showHeader || g.notes ? 10 : 0, flexWrap: "wrap", gap: 8 }}>
           <div className="row" style={{ gap: 6 }}>
             {isFinished ? (
               <button className="ghost" onClick={() => reopenGoal(g)}>Reopen</button>
@@ -852,6 +679,16 @@ export default function GoalsPage() {
           <div className="field field-full">
             <label htmlFor="goal-target">Target date</label>
             <input id="goal-target" type="date" value={targetDate} onChange={(e) => setTargetDate(e.target.value)} />
+          </div>
+          <div className="field field-full">
+            <label htmlFor="goal-notes">Notes</label>
+            <textarea
+              id="goal-notes"
+              rows={3}
+              placeholder="Why this goal matters, how you'll approach it…"
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+            />
           </div>
           <div className="form-actions">
             <button type="submit" className="primary">Add goal</button>
