@@ -907,13 +907,12 @@ button.danger:hover { background: #fdf2f2; border-color: var(--danger); }
   margin-bottom: 0;
 }
 
-.finish-goal-btn {
-  margin-top: 10px;
+button.finish-goal-btn {
   background: var(--accent);
   border-color: var(--accent);
   color: white;
 }
-.finish-goal-btn:hover { background: var(--accent); filter: brightness(0.92); }
+button.finish-goal-btn:hover { background: var(--accent); filter: brightness(0.92); }
 
 .celebration-overlay {
   position: fixed;

@@ -596,21 +596,23 @@ export default function GoalsPage() {
               <CircularProgress percent={pct} size={48} strokeWidth={5} />
               <span className="muted">{doneCount} / {goalTasks.length} tasks done</span>
             </div>
-            {doneCount > 0 && doneCount === goalTasks.length && !isFinished && (
-              <button className="primary finish-goal-btn" onClick={() => finishGoal(g)}>
-                🎉 Finish goal
-              </button>
-            )}
           </>
         )}
 
-        <div className="row" style={{ gap: 6, marginTop: showHeader ? 10 : 0 }}>
-          {isFinished ? (
-            <button className="ghost" onClick={() => reopenGoal(g)}>Reopen</button>
-          ) : (
-            <button className="ghost" onClick={() => startEditGoal(g)}>Edit</button>
+        <div className="row-between" style={{ marginTop: showHeader ? 10 : 0, flexWrap: "wrap", gap: 8 }}>
+          <div className="row" style={{ gap: 6 }}>
+            {isFinished ? (
+              <button className="ghost" onClick={() => reopenGoal(g)}>Reopen</button>
+            ) : (
+              <button className="ghost" onClick={() => startEditGoal(g)}>Edit</button>
+            )}
+            <button className="danger" onClick={() => setConfirmingDeleteId(g.id)}>Delete</button>
+          </div>
+          {doneCount > 0 && doneCount === goalTasks.length && !isFinished && (
+            <button className="primary finish-goal-btn" onClick={() => finishGoal(g)}>
+              🎉 Finish goal
+            </button>
           )}
-          <button className="danger" onClick={() => setConfirmingDeleteId(g.id)}>Delete</button>
         </div>
 
         {confirmingDeleteId === g.id && (
