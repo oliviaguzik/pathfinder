@@ -674,7 +674,7 @@ export default function GoalsPage() {
           <p className="page-sub">Track progress toward the things that matter beyond day-to-day tasks.</p>
         </div>
         <div className="row" style={{ gap: 10 }}>
-          <div className="row" style={{ gap: 4 }}>
+          <div className="row goals-view-toggle" style={{ gap: 4 }}>
             <button
               className={`ghost view-toggle-btn ${view === "grid" ? "active" : ""}`}
               onClick={() => changeView("grid")}
@@ -699,7 +699,12 @@ export default function GoalsPage() {
           <Skeleton rows={3} />
         </div>
       )}
-      {!loading && goals.length === 0 && <p className="empty-state">🎯 No goals yet — add one above.</p>}
+      {!loading && goals.length === 0 && (
+        <div className="empty-state">
+          <span className="empty-state-icon">🎯</span>
+          <span>No goals yet — add one above.</span>
+        </div>
+      )}
 
       {view === "grid" ? (
         <div className="goal-grid">

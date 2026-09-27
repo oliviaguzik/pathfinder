@@ -819,7 +819,10 @@ export default function TasksPage() {
         <div className="card" style={{ marginTop: 20 }}>
           {loading && <Skeleton rows={4} />}
           {!loading && sortedVisibleTasks.length === 0 && (
-            <p className="empty-state">🗒️ No tasks match these filters yet.</p>
+            <div className="empty-state">
+              <span className="empty-state-icon">🗒️</span>
+              <span>No tasks match these filters yet.</span>
+            </div>
           )}
           {sortedVisibleTasks.map((t) =>
             editingId === t.id ? (
@@ -919,7 +922,12 @@ export default function TasksPage() {
               <div className="section-label">Upcoming</div>
               <div className="calendar-side-list">
                 {loading && <Skeleton rows={2} />}
-                {!loading && upcomingTasks.length === 0 && <p className="muted">Nothing here.</p>}
+                {!loading && upcomingTasks.length === 0 && (
+                  <div className="empty-state-mini">
+                    <span className="empty-state-icon">✅</span>
+                    <span>Nothing upcoming.</span>
+                  </div>
+                )}
                 {upcomingTasks.map((t) => renderUpcomingTaskRow(t))}
               </div>
             </div>
@@ -939,7 +947,12 @@ export default function TasksPage() {
                 }}
               >
                 {loading && <Skeleton rows={2} />}
-                {!loading && undatedTasks.length === 0 && <p className="muted">Nothing here.</p>}
+                {!loading && undatedTasks.length === 0 && (
+                  <div className="empty-state-mini">
+                    <span className="empty-state-icon">📭</span>
+                    <span>Nothing here.</span>
+                  </div>
+                )}
                 {undatedTasks.map((t) => renderUndatedTaskRow(t))}
               </div>
             </div>
