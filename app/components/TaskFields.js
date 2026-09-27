@@ -8,13 +8,22 @@ const EFFORT_OPTIONS = [{ value: "", label: "N/A" }, "Small", "Medium", "Large"]
 
 // The fields shared by every add/edit task form. `form` is shaped like
 // EMPTY_TASK_FORM (lib/taskForm.js); `onChange` receives the changed keys.
-// Pass `goalOptions` to also show the category and goal pickers.
-export default function TaskFields({ form, onChange, idPrefix, namePlaceholder, autoFocus = false, goalOptions }) {
+// Pass `goalOptions` to also show the category and goal pickers, and
+// `showName={false}` when the caller renders the name input itself.
+export default function TaskFields({
+  form,
+  onChange,
+  idPrefix,
+  namePlaceholder,
+  autoFocus = false,
+  goalOptions,
+  showName = true,
+}) {
   const id = (suffix) => `${idPrefix}-${suffix}`;
 
   return (
     <>
-      <div className="field field-full">
+      {showName && <div className="field field-full">
         <label htmlFor={id("name")}>Task name</label>
         <input
           id={id("name")}
@@ -24,7 +33,7 @@ export default function TaskFields({ form, onChange, idPrefix, namePlaceholder, 
           onChange={(e) => onChange({ name: e.target.value })}
           autoFocus={autoFocus}
         />
-      </div>
+      </div>}
       {goalOptions && (
         <div className="field">
           <label htmlFor={id("category")}>Category</label>
@@ -78,7 +87,7 @@ export default function TaskFields({ form, onChange, idPrefix, namePlaceholder, 
         <input
           id={id("recurring")}
           type="checkbox"
-          className="checkbox"
+          className="checkbox checkbox-square"
           checked={form.recurring}
           onChange={(e) =>
             onChange(

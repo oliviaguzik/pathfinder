@@ -8,10 +8,12 @@ import Popover from "./components/Popover";
 import Skeleton from "./components/Skeleton";
 import Icon from "./components/Icon";
 import TaskFields from "./components/TaskFields";
-import { recurrenceLabel, nextOccurrence } from "../lib/recurrence";
+import TaskMeta from "./components/TaskMeta";
+import { nextOccurrence } from "../lib/recurrence";
 import { syncGoalStatuses } from "../lib/goalCompletion";
 import { positionBetween, nextPosition, sortByPosition } from "../lib/reorder";
-import { parseLocalDate, toISODateLocal } from "../lib/dates";
+import { friendlyDate, parseLocalDate, toISODateLocal } from "../lib/dates";
+import { DUE_GROUPS, groupTasksByDue } from "../lib/taskGroups";
 import { EMPTY_TASK_FORM, taskFormFromTask, taskFieldsFromForm } from "../lib/taskForm";
 import { useAuth } from "../lib/AuthProvider";
 
@@ -96,6 +98,26 @@ function sortDoneLast(list) {
 }
 
 const WEEKDAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+const MONTH_CELL_LIMIT = 3;
+
+// The Sunday-to-Saturday week containing `date`.
+function getWeekDays(date) {
+  const start = new Date(date.getFullYear(), date.getMonth(), date.getDate() - date.getDay());
+  return Array.from({ length: 7 }, (_, i) => new Date(start.getFullYear(), start.getMonth(), start.getDate() + i));
+}
+
+function weekLabel(days) {
+  const first = days[0];
+  const last = days[6];
+  const sameYear = first.getFullYear() === last.getFullYear();
+  const start = first.toLocaleDateString(undefined, { month: "short", day: "numeric", ...(!sameYear && { year: "numeric" }) });
+  // "Oct 18 – 24, 2026", "Sep 27 – Oct 3, 2026", "Dec 27, 2026 – Jan 2, 2027"
+  const end =
+    first.getMonth() === last.getMonth()
+      ? `${last.getDate()}, ${last.getFullYear()}`
+      : last.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
+  return `${start} – ${end}`;
+}
 
 export default function TasksPage() {
   const { user } = useAuth();
@@ -110,10 +132,15 @@ export default function TasksPage() {
 
   const [view, setView] = useState("list");
   const [calendarDate, setCalendarDate] = useState(new Date());
+  const [calendarMode, setCalendarMode] = useState("month");
+  const [selectedDay, setSelectedDay] = useState(null);
+  const [dayTaskName, setDayTaskName] = useState("");
   const calendarMainRef = useRef(null);
   const [calendarSideMaxHeight, setCalendarSideMaxHeight] = useState(null);
 
   const [newTask, setNewTask] = useState(EMPTY_TASK_FORM);
+  const [optionsOpen, setOptionsOpen] = useState(false);
+  const [showCompleted, setShowCompleted] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [editForm, setEditForm] = useState(EMPTY_TASK_FORM);
 
@@ -124,7 +151,29 @@ export default function TasksPage() {
   useEffect(() => {
     const stored = localStorage.getItem("tasksView");
     if (stored === "list" || stored === "calendar") setView(stored);
+    const storedMode = localStorage.getItem("calendarMode");
+    if (["month", "week", "day"].includes(storedMode)) setCalendarMode(storedMode);
   }, []);
+
+  function changeCalendarMode(next) {
+    setCalendarMode(next);
+    localStorage.setItem("calendarMode", next);
+  }
+
+  function shiftCalendar(direction) {
+    const d = calendarDate;
+    if (calendarMode === "month") {
+      setCalendarDate(new Date(d.getFullYear(), d.getMonth() + direction, 1));
+    } else {
+      const days = calendarMode === "week" ? 7 : 1;
+      setCalendarDate(new Date(d.getFullYear(), d.getMonth(), d.getDate() + days * direction));
+    }
+  }
+
+  function openDay(dateStr) {
+    setSelectedDay(dateStr);
+    setDayTaskName("");
+  }
 
   function changeView(next) {
     setView(next);
@@ -159,7 +208,7 @@ export default function TasksPage() {
     measure();
     window.addEventListener("resize", measure);
     return () => window.removeEventListener("resize", measure);
-  }, [view, calendarDate, tasks]);
+  }, [view, calendarDate, calendarMode, tasks]);
 
   async function addTask(e) {
     e.preventDefault();
@@ -181,6 +230,21 @@ export default function TasksPage() {
       recurrencePreset: "daily",
       recurrenceCustomDays: "2",
     }));
+    loadData();
+  }
+
+  async function addTaskOnDay(e, dateStr) {
+    e.preventDefault();
+    if (!dayTaskName.trim() || !dateStr) return;
+    await supabase.from("tasks").insert({
+      ...taskFieldsFromForm({ ...EMPTY_TASK_FORM, name: dayTaskName, dueDate: dateStr }),
+      category: EMPTY_TASK_FORM.category,
+      goal_id: null,
+      status: "To Do",
+      position: nextPosition(tasks),
+      user_id: user.id,
+    });
+    setDayTaskName("");
     loadData();
   }
 
@@ -224,7 +288,7 @@ export default function TasksPage() {
 
   async function reorderTask(draggedId, targetId, placeAfter) {
     if (!draggedId || draggedId === targetId) return;
-    const ordered = sortedVisibleTasks.filter((t) => t.id !== draggedId);
+    const ordered = displayedTasks.filter((t) => t.id !== draggedId);
     const targetIndex = ordered.findIndex((t) => t.id === targetId);
     if (targetIndex === -1) return;
     const insertIndex = placeAfter ? targetIndex + 1 : targetIndex;
@@ -270,6 +334,15 @@ export default function TasksPage() {
     return true;
   });
   const sortedVisibleTasks = sortTasksList(visibleTasks, sortBy);
+  const taskGroups = groupTasksByDue(sortedVisibleTasks);
+  const completedOpen = showCompleted || filterStatus === "Done";
+  // The list as shown on screen, which drag-reordering positions against.
+  const displayedTasks = [
+    ...DUE_GROUPS.flatMap((g) => taskGroups[g.key]),
+    ...(completedOpen ? taskGroups.completed : []),
+  ];
+
+  const quickAddExpanded = optionsOpen || newTask.name.trim() !== "";
 
   const activeFilterCount = [filterCategory, filterStatus, filterPriority, filterEffort].filter(
     (v) => v !== "All"
@@ -322,9 +395,10 @@ export default function TasksPage() {
   }
 
   function renderTaskRow(t) {
+    const confirming = confirmingDeleteTaskId === t.id;
     return (
       <div
-        className={`task-row ${dragOverTaskId === t.id ? "drag-over" : ""}`}
+        className={`task-row ${dragOverTaskId === t.id ? "drag-over" : ""} ${confirming ? "confirming" : ""}`}
         key={t.id}
         onDragOver={(e) => {
           if (!draggedTaskId) return;
@@ -362,39 +436,35 @@ export default function TasksPage() {
           className="checkbox"
           checked={t.status === "Done"}
           onChange={() => toggleDone(t)}
+          aria-label={`Mark "${t.name}" ${t.status === "Done" ? "not done" : "done"}`}
         />
-        <span className={`task-name ${t.status === "Done" ? "done" : ""}`}>
-          {t.name}
-          {t.category === "Goal-Related" && t.goal_id && (
-            <span className="muted"> — {goalName(t.goal_id)}</span>
-          )}
-        </span>
-        {t.recurring && (
-          <span className="muted recurring-icon" title={recurrenceLabel(t)}>↻</span>
-        )}
-        {t.priority && (
-          <span className={`badge badge-${t.priority.toLowerCase()}`}>Priority: {t.priority}</span>
-        )}
-        {t.effort && (
-          <span className="muted effort-abbr" title={`Effort: ${t.effort}`}>{t.effort.charAt(0)}</span>
-        )}
-        {t.due_date && (
-          <span className={isOverdue(t) ? "due-date overdue" : isDueToday(t) ? "due-date today" : "muted due-date"}>
-            {isOverdue(t) ? `Overdue: ${t.due_date}` : isDueToday(t) ? "Due today" : `Due ${t.due_date}`}
-          </span>
-        )}
+        <div className="task-main">
+          <span className={`task-name ${t.status === "Done" ? "done" : ""}`}>{t.name}</span>
+          <TaskMeta task={t} goalName={t.category === "Goal-Related" && t.goal_id ? goalName(t.goal_id) : ""} />
+        </div>
         <div className="task-actions">
           <button className="ghost icon-btn" onClick={() => startEditTask(t)} aria-label="Edit task" title="Edit">
             <Icon name="edit" size={14} />
           </button>
           <button
-            className={confirmingDeleteTaskId === t.id ? "danger icon-btn" : "ghost icon-btn"}
+            className={confirming ? "danger icon-btn" : "ghost icon-btn"}
             onClick={() => handleDeleteClick(t.id)}
-            aria-label={confirmingDeleteTaskId === t.id ? "Confirm delete task" : "Delete task"}
-            title={confirmingDeleteTaskId === t.id ? "Click again to delete" : "Delete"}
+            aria-label={confirming ? "Confirm delete task" : "Delete task"}
+            title={confirming ? "Click again to delete" : "Delete"}
           >
-            {confirmingDeleteTaskId === t.id ? "Delete?" : "×"}
+            {confirming ? "Delete?" : "×"}
           </button>
+        </div>
+      </div>
+    );
+  }
+
+  function renderListItem(t) {
+    if (editingId !== t.id) return renderTaskRow(t);
+    return (
+      <div className="task-row edit-row" key={t.id}>
+        <div className="form-grid compact" style={{ width: "100%" }}>
+          {renderEditFields(t.id)}
         </div>
       </div>
     );
@@ -426,7 +496,7 @@ export default function TasksPage() {
             {t.name}
           </span>
           <div className={isOverdue(t) ? "due-date overdue" : isDueToday(t) ? "due-date today" : "muted due-date"}>
-            {isOverdue(t) ? `Overdue: ${t.due_date}` : isDueToday(t) ? "Due today" : `Due ${t.due_date}`}
+            {isOverdue(t) ? `Overdue · ${friendlyDate(t.due_date)}` : friendlyDate(t.due_date)}
           </div>
         </div>
         <button
@@ -477,10 +547,92 @@ export default function TasksPage() {
     );
   }
 
+  function renderCalendarTask(t) {
+    return (
+      <div
+        className="calendar-task"
+        key={t.id}
+        draggable
+        onClick={(e) => e.stopPropagation()}
+        onDragStart={(e) => {
+          e.dataTransfer.effectAllowed = "move";
+          setDraggedTaskId(t.id);
+        }}
+        onDragEnd={() => setDraggedTaskId(null)}
+      >
+        <input
+          type="checkbox"
+          className="checkbox"
+          checked={t.status === "Done"}
+          onChange={() => toggleDone(t)}
+          aria-label={`Mark "${t.name}" ${t.status === "Done" ? "not done" : "done"}`}
+        />
+        <span
+          className={`task-name-editable calendar-task-name ${t.status === "Done" ? "done" : ""}`}
+          onClick={() => startEditTask(t)}
+          title={t.name}
+        >
+          {t.name}
+        </span>
+      </div>
+    );
+  }
+
+  // A day's tasks at full size plus an add box for that date — used by the Day
+  // view and by the panel that opens when you click a day.
+  function renderDayTasks(dateStr) {
+    const dayTasks = tasksByDate[dateStr] || [];
+    return (
+      <div className="day-panel">
+        {dayTasks.length === 0 && <p className="muted">Nothing due this day.</p>}
+        {dayTasks.map((t) => (
+          <div className="task-row" key={t.id}>
+            <input
+              type="checkbox"
+              className="checkbox"
+              checked={t.status === "Done"}
+              onChange={() => toggleDone(t)}
+              aria-label={`Mark "${t.name}" ${t.status === "Done" ? "not done" : "done"}`}
+            />
+            <div className="task-main">
+              <span className={`task-name ${t.status === "Done" ? "done" : ""}`}>{t.name}</span>
+              <TaskMeta
+                task={t}
+                showDue={false}
+                goalName={t.category === "Goal-Related" && t.goal_id ? goalName(t.goal_id) : ""}
+              />
+            </div>
+            <button className="ghost icon-btn" onClick={() => startEditTask(t)} aria-label="Edit task" title="Edit">
+              <Icon name="edit" size={14} />
+            </button>
+          </div>
+        ))}
+        <form className="day-panel-add" onSubmit={(e) => addTaskOnDay(e, dateStr)}>
+          <input
+            type="text"
+            placeholder="Add a task on this day…"
+            aria-label="New task name"
+            value={dayTaskName}
+            onChange={(e) => setDayTaskName(e.target.value)}
+            autoFocus={!!selectedDay}
+          />
+          <button type="submit" className="primary" disabled={!dayTaskName.trim()}>Add</button>
+        </form>
+      </div>
+    );
+  }
+
   const year = calendarDate.getFullYear();
   const month = calendarDate.getMonth();
-  const monthLabel = calendarDate.toLocaleDateString(undefined, { month: "long", year: "numeric" });
   const grid = getMonthGrid(year, month);
+  const weekDays = getWeekDays(calendarDate);
+  const calendarDayStr = toISODateLocal(calendarDate);
+  const calendarLabel =
+    calendarMode === "week"
+      ? weekLabel(weekDays)
+      : calendarMode === "day"
+        ? calendarDate.toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric", year: "numeric" })
+        : calendarDate.toLocaleDateString(undefined, { month: "long", year: "numeric" });
   const today = new Date();
 
   const tasksByDate = {};
@@ -503,17 +655,40 @@ export default function TasksPage() {
       <h1>Tasks</h1>
       <p className="page-sub">Everything on your plate, general life and goal-related alike.</p>
 
-      <form className="form-grid" onSubmit={addTask}>
-        <TaskFields
-          form={newTask}
-          onChange={(patch) => setNewTask((f) => ({ ...f, ...patch }))}
-          idPrefix="task"
-          namePlaceholder="e.g. Book dentist appointment"
-          goalOptions={goalOptions()}
-        />
-        <div className="form-actions">
-          <button type="submit" className="primary">Add task</button>
+      <form className={`quick-add ${quickAddExpanded ? "expanded" : ""}`} onSubmit={addTask}>
+        <div className="quick-add-row">
+          <span className="quick-add-icon" aria-hidden="true">
+            <Icon name="plus" size={16} />
+          </span>
+          <input
+            className="quick-add-input"
+            type="text"
+            placeholder="Add a task…"
+            aria-label="Task name"
+            value={newTask.name}
+            onChange={(e) => setNewTask((f) => ({ ...f, name: e.target.value }))}
+          />
+          <button
+            type="button"
+            className="ghost quick-add-options-btn"
+            aria-expanded={quickAddExpanded}
+            onClick={() => setOptionsOpen((o) => !o)}
+          >
+            {quickAddExpanded ? "Fewer options" : "Options"}
+          </button>
+          <button type="submit" className="primary" disabled={!newTask.name.trim()}>Add</button>
         </div>
+        {quickAddExpanded && (
+          <div className="quick-add-options">
+            <TaskFields
+              form={newTask}
+              onChange={(patch) => setNewTask((f) => ({ ...f, ...patch }))}
+              idPrefix="task"
+              goalOptions={goalOptions()}
+              showName={false}
+            />
+          </div>
+        )}
       </form>
 
       <div className="row-between" style={{ alignItems: "flex-start", flexWrap: "wrap", gap: 10 }}>
@@ -620,7 +795,7 @@ export default function TasksPage() {
       </div>
 
       {view === "list" ? (
-        <div className="card" style={{ marginTop: 20 }}>
+        <div className="card task-list-card">
           {loading && <Skeleton rows={4} />}
           {!loading && sortedVisibleTasks.length === 0 && (
             <div className="empty-state">
@@ -628,16 +803,36 @@ export default function TasksPage() {
               <span>No tasks match these filters yet.</span>
             </div>
           )}
-          {sortedVisibleTasks.map((t) =>
-            editingId === t.id ? (
-              <div className="task-row edit-row" key={t.id}>
-                <div className="form-grid compact" style={{ width: "100%" }}>
-                  {renderEditFields(t.id)}
-                </div>
-              </div>
-            ) : (
-              renderTaskRow(t)
-            )
+          {DUE_GROUPS.map(
+            (g) =>
+              taskGroups[g.key].length > 0 && (
+                <section className={`task-group task-group-${g.key}`} key={g.key}>
+                  <h2 className="task-group-header">
+                    {g.label}
+                    <span className="task-group-count">{taskGroups[g.key].length}</span>
+                  </h2>
+                  {taskGroups[g.key].map(renderListItem)}
+                </section>
+              )
+          )}
+          {taskGroups.completed.length > 0 && (
+            <section className="task-group task-group-completed">
+              <h2 className="task-group-header">
+                <button
+                  type="button"
+                  className="task-group-toggle"
+                  aria-expanded={completedOpen}
+                  onClick={() => setShowCompleted((v) => !v)}
+                >
+                  <span className={`task-group-chevron ${completedOpen ? "open" : ""}`}>
+                    <Icon name="chevronRight" size={14} />
+                  </span>
+                  Completed
+                  <span className="task-group-count">{taskGroups.completed.length}</span>
+                </button>
+              </h2>
+              {completedOpen && taskGroups.completed.map(renderListItem)}
+            </section>
           )}
         </div>
       ) : (
@@ -647,75 +842,154 @@ export default function TasksPage() {
               <div className="row" style={{ gap: 4 }}>
                 <button
                   className="ghost icon-btn"
-                  onClick={() => setCalendarDate(new Date(year, month - 1, 1))}
-                  aria-label="Previous month"
+                  onClick={() => shiftCalendar(-1)}
+                  aria-label={`Previous ${calendarMode}`}
                 >
                   ‹
                 </button>
                 <button
                   className="ghost icon-btn"
-                  onClick={() => setCalendarDate(new Date(year, month + 1, 1))}
-                  aria-label="Next month"
+                  onClick={() => shiftCalendar(1)}
+                  aria-label={`Next ${calendarMode}`}
                 >
                   ›
                 </button>
+                <span className="calendar-title">{calendarLabel}</span>
               </div>
-              <span className="calendar-title">{monthLabel}</span>
-              <button className="ghost" onClick={() => setCalendarDate(new Date())}>Today</button>
+              <div className="row" style={{ gap: 8 }}>
+                <button className="ghost" onClick={() => setCalendarDate(new Date())}>Today</button>
+                <div className="segmented" role="group" aria-label="Calendar range">
+                  {["month", "week", "day"].map((mode) => (
+                    <button
+                      key={mode}
+                      className={calendarMode === mode ? "active" : ""}
+                      aria-pressed={calendarMode === mode}
+                      onClick={() => changeCalendarMode(mode)}
+                    >
+                      {mode.charAt(0).toUpperCase() + mode.slice(1)}
+                    </button>
+                  ))}
+                </div>
+              </div>
             </div>
-            <div className="calendar-grid">
-              {WEEKDAY_LABELS.map((w) => (
-                <div className="calendar-weekday" key={w}>{w}</div>
-              ))}
-              {grid.map(({ date, outside }) => {
-                const dayTasks = tasksByDate[toISODateLocal(date)] || [];
-                const cellDateStr = toISODateLocal(date);
-                return (
-                  <div
-                    className={`calendar-cell ${outside ? "outside" : ""} ${isSameDay(date, today) ? "today" : ""} ${draggedTaskId ? "drop-target" : ""}`}
-                    key={date.toISOString()}
-                    onDragOver={(e) => {
-                      if (!draggedTaskId) return;
-                      e.preventDefault();
-                    }}
-                    onDrop={(e) => {
-                      e.preventDefault();
-                      if (draggedTaskId) moveTaskToDate(draggedTaskId, cellDateStr);
-                      setDraggedTaskId(null);
-                    }}
-                  >
-                    <div className="calendar-date">{date.getDate()}</div>
-                    <div className="calendar-cell-tasks">
-                      {dayTasks.map((t) => (
-                        <div
-                          className="calendar-task"
-                          key={t.id}
-                          draggable
-                          onDragStart={(e) => {
-                            e.dataTransfer.effectAllowed = "move";
-                            setDraggedTaskId(t.id);
-                          }}
-                          onDragEnd={() => setDraggedTaskId(null)}
-                        >
-                          <input
-                            type="checkbox"
-                            className="checkbox"
-                            checked={t.status === "Done"}
-                            onChange={() => toggleDone(t)}
-                          />
-                          <span
-                            className={`task-name-editable calendar-task-name ${t.status === "Done" ? "done" : ""}`}
-                            onClick={() => startEditTask(t)}
-                          >
-                            {t.name}
-                          </span>
-                        </div>
-                      ))}
+            {calendarMode === "day" ? (
+              <div
+                className={`calendar-day ${draggedTaskId ? "drop-target" : ""}`}
+                onDragOver={(e) => {
+                  if (!draggedTaskId) return;
+                  e.preventDefault();
+                }}
+                onDrop={(e) => {
+                  e.preventDefault();
+                  if (draggedTaskId) moveTaskToDate(draggedTaskId, calendarDayStr);
+                  setDraggedTaskId(null);
+                }}
+              >
+                {renderDayTasks(calendarDayStr)}
+              </div>
+            ) : calendarMode === "month" ? (
+              <div className="calendar-grid">
+                {WEEKDAY_LABELS.map((w) => (
+                  <div className="calendar-weekday" key={w}>{w}</div>
+                ))}
+                {grid.map(({ date, outside }) => {
+                  const cellDateStr = toISODateLocal(date);
+                  const dayTasks = tasksByDate[cellDateStr] || [];
+                  const hidden = dayTasks.length - MONTH_CELL_LIMIT;
+                  return (
+                    <div
+                      className={`calendar-cell ${outside ? "outside" : ""} ${isSameDay(date, today) ? "today" : ""} ${draggedTaskId ? "drop-target" : ""}`}
+                      key={cellDateStr}
+                      onClick={() => openDay(cellDateStr)}
+                      onDragOver={(e) => {
+                        if (!draggedTaskId) return;
+                        e.preventDefault();
+                      }}
+                      onDrop={(e) => {
+                        e.preventDefault();
+                        if (draggedTaskId) moveTaskToDate(draggedTaskId, cellDateStr);
+                        setDraggedTaskId(null);
+                      }}
+                    >
+                      <button
+                        type="button"
+                        className="calendar-date"
+                        aria-label={`Open ${date.toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" })}`}
+                      >
+                        {date.getDate()}
+                      </button>
+                      <div className="calendar-cell-tasks">
+                        {dayTasks.slice(0, hidden > 0 ? MONTH_CELL_LIMIT - 1 : MONTH_CELL_LIMIT).map(renderCalendarTask)}
+                        {hidden > 0 && (
+                          <span className="calendar-more">+{hidden + 1} more</span>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                );
-              })}
-            </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="calendar-week">
+                {weekDays.map((date) => {
+                  const cellDateStr = toISODateLocal(date);
+                  const dayTasks = tasksByDate[cellDateStr] || [];
+                  return (
+                    <div
+                      className={`calendar-week-day ${isSameDay(date, today) ? "today" : ""} ${draggedTaskId ? "drop-target" : ""}`}
+                      key={cellDateStr}
+                      onDragOver={(e) => {
+                        if (!draggedTaskId) return;
+                        e.preventDefault();
+                      }}
+                      onDrop={(e) => {
+                        e.preventDefault();
+                        if (draggedTaskId) moveTaskToDate(draggedTaskId, cellDateStr);
+                        setDraggedTaskId(null);
+                      }}
+                    >
+                      <button type="button" className="calendar-week-head" onClick={() => openDay(cellDateStr)}>
+                        <span className="calendar-week-weekday">{WEEKDAY_LABELS[date.getDay()]}</span>
+                        <span className="calendar-week-date">{date.getDate()}</span>
+                      </button>
+                      <div className="calendar-week-tasks">
+                        {dayTasks.map((t) => (
+                          <div
+                            className={`calendar-week-task ${t.status === "Done" ? "done" : ""}`}
+                            key={t.id}
+                            draggable
+                            onDragStart={(e) => {
+                              e.dataTransfer.effectAllowed = "move";
+                              setDraggedTaskId(t.id);
+                            }}
+                            onDragEnd={() => setDraggedTaskId(null)}
+                          >
+                            <input
+                              type="checkbox"
+                              className="checkbox"
+                              checked={t.status === "Done"}
+                              onChange={() => toggleDone(t)}
+                              aria-label={`Mark "${t.name}" ${t.status === "Done" ? "not done" : "done"}`}
+                            />
+                            <div className="task-main">
+                              <span
+                                className={`task-name task-name-editable ${t.status === "Done" ? "done" : ""}`}
+                                onClick={() => startEditTask(t)}
+                              >
+                                {t.name}
+                              </span>
+                              <TaskMeta task={t} compact showDue={false} />
+                            </div>
+                          </div>
+                        ))}
+                        <button type="button" className="calendar-week-add" onClick={() => openDay(cellDateStr)}>
+                          <Icon name="plus" size={13} /> Add
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
 
           <div
@@ -737,7 +1011,7 @@ export default function TasksPage() {
             </div>
 
             <div className="calendar-side-section">
-              <div className="section-label">No due date</div>
+              <div className="section-label">No date</div>
               <div
                 className={`calendar-side-list ${draggedTaskId ? "drop-target" : ""}`}
                 onDragOver={(e) => {
@@ -763,6 +1037,18 @@ export default function TasksPage() {
           </div>
         </div>
       )}
+
+      <Modal
+        open={view === "calendar" && !!selectedDay && !editingId}
+        onClose={() => setSelectedDay(null)}
+        title={
+          selectedDay
+            ? parseLocalDate(selectedDay).toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" })
+            : ""
+        }
+      >
+        {selectedDay && renderDayTasks(selectedDay)}
+      </Modal>
 
       <Modal open={view === "calendar" && !!editingId} onClose={cancelEditTask} title="Edit task">
         <div className="form-grid" style={{ boxShadow: "none", border: "none", padding: 0, margin: 0 }}>

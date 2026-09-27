@@ -8,7 +8,9 @@ import Celebration from "../components/Celebration";
 import Skeleton from "../components/Skeleton";
 import Icon from "../components/Icon";
 import TaskFields from "../components/TaskFields";
-import { recurrenceLabel, nextOccurrence } from "../../lib/recurrence";
+import TaskMeta from "../components/TaskMeta";
+import Menu from "../components/Menu";
+import { nextOccurrence } from "../../lib/recurrence";
 import { goalStatusFor, syncGoalStatuses } from "../../lib/goalCompletion";
 import { positionBetween, nextPosition, sortByPosition } from "../../lib/reorder";
 import { parseLocalDate, toISODateLocal, todayLocalISODate } from "../../lib/dates";
@@ -278,11 +280,16 @@ export default function GoalsPage() {
       return isPastDue ? { text: "Past due", cls: "badge-high" } : null;
     }
     if (goal.completed_at) {
-      const completedText = `Completed ${new Date(goal.completed_at).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })}`;
-      return { text: completedText, cls: "badge-life" };
+      const completedDate = new Date(goal.completed_at);
+      const completedText = `Completed ${completedDate.toLocaleDateString(undefined, {
+        month: "short",
+        day: "numeric",
+        ...(completedDate.getFullYear() !== today.getFullYear() && { year: "numeric" }),
+      })}`;
+      return { text: completedText, cls: "badge-success" };
     }
     if (doneCount === total) {
-      return { text: "Ready to finish", cls: "badge-life" };
+      return { text: "Ready to finish", cls: "badge-success" };
     }
     if (isPastDue) {
       return { text: "Past due", cls: "badge-high" };
@@ -305,7 +312,7 @@ export default function GoalsPage() {
     const timePct = totalDays > 0 ? elapsedDays / totalDays : 1;
     const donePct = doneCount / total;
     return donePct >= timePct
-      ? { text: "On track", cls: "badge-life" }
+      ? { text: "On track", cls: "badge-success" }
       : { text: "Behind pace", cls: "badge-high" };
   }
 
@@ -348,14 +355,16 @@ export default function GoalsPage() {
     if (editingTaskId === t.id) {
       return <div key={t.id} style={{ padding: "6px 0" }}>{renderEditTaskForm(t)}</div>;
     }
+    const confirming = confirmingDeleteTaskId === t.id;
     return (
-      <div className="task-row" key={t.id}>
+      <div className={`task-row ${confirming ? "confirming" : ""}`} key={t.id}>
         <input
           type="checkbox"
           className="checkbox"
           checked={t.status === "Done"}
           disabled={locked}
           onChange={() => toggleDone(t)}
+          aria-label={`Mark "${t.name}" ${t.status === "Done" ? "not done" : "done"}`}
         />
         <span
           className={`task-name ${locked ? "" : "task-name-editable"} ${t.status === "Done" ? "done" : ""}`}
@@ -363,18 +372,15 @@ export default function GoalsPage() {
         >
           {t.name}
         </span>
-        {t.recurring && (
-          <span className="muted recurring-icon" title={recurrenceLabel(t)}>↻</span>
-        )}
-        {t.priority && <span className={`badge badge-${t.priority.toLowerCase()}`}>{t.priority}</span>}
+        <TaskMeta task={t} compact />
         {!locked && (
           <button
-            className={confirmingDeleteTaskId === t.id ? "danger row-delete-btn" : "ghost row-delete-btn"}
+            className={confirming ? "danger row-delete-btn" : "ghost row-delete-btn"}
             onClick={() => handleDeleteTaskClick(t.id)}
-            aria-label={confirmingDeleteTaskId === t.id ? "Confirm delete task" : "Delete task"}
-            title={confirmingDeleteTaskId === t.id ? "Click again to delete" : "Delete"}
+            aria-label={confirming ? "Confirm delete task" : "Delete task"}
+            title={confirming ? "Click again to delete" : "Delete"}
           >
-            {confirmingDeleteTaskId === t.id ? "Delete?" : "×"}
+            {confirming ? "Delete?" : "×"}
           </button>
         )}
       </div>
@@ -407,6 +413,18 @@ export default function GoalsPage() {
 
     const addingHere = addTaskForId === g.id;
     const isFinished = !!g.completed_at;
+    const canFinish = doneCount > 0 && doneCount === goalTasks.length && !isFinished;
+    const menu = (
+      <Menu
+        label={`Actions for ${g.name}`}
+        items={[
+          isFinished
+            ? { label: "Reopen goal", onClick: () => reopenGoal(g) }
+            : { label: "Edit goal", onClick: () => startEditGoal(g) },
+          { label: "Delete goal", danger: true, onClick: () => setConfirmingDeleteId(g.id) },
+        ]}
+      />
+    );
 
     return (
       <>
@@ -414,33 +432,33 @@ export default function GoalsPage() {
           <>
             <div className="row-between" style={{ alignItems: "flex-start" }}>
               <span className="goal-tile-name">{g.name}</span>
-              {pace && <span className={`badge ${pace.cls}`}>{pace.text}</span>}
+              {menu}
             </div>
-            {g.target_date && <div className="muted" style={{ marginTop: 4 }}>{targetLine(g)}</div>}
-            <div className="row" style={{ marginTop: 10, gap: 10 }}>
+            {g.target_date && <div className="muted" style={{ marginTop: 2 }}>{targetLine(g)}</div>}
+            <div className="row" style={{ marginTop: 12, gap: 12 }}>
               <CircularProgress percent={pct} size={48} strokeWidth={5} />
-              <span className="muted">{doneCount} / {goalTasks.length} tasks done</span>
+              <div className="goal-progress-text">
+                {pace && <span className={`badge ${pace.cls}`}>{pace.text}</span>}
+                <span className="muted">{doneCount} / {goalTasks.length} tasks done</span>
+              </div>
             </div>
           </>
         )}
 
         {g.notes && <p className="goal-notes" style={{ marginTop: showHeader ? 10 : 0 }}>{g.notes}</p>}
 
-        <div className="row-between" style={{ marginTop: showHeader || g.notes ? 10 : 0, flexWrap: "wrap", gap: 8 }}>
-          <div className="row" style={{ gap: 6 }}>
-            {isFinished ? (
-              <button className="ghost" onClick={() => reopenGoal(g)}>Reopen</button>
+        {(canFinish || !showHeader) && (
+          <div className="row-between" style={{ marginTop: showHeader || g.notes ? 10 : 0, flexWrap: "wrap", gap: 8 }}>
+            {canFinish ? (
+              <button className="primary finish-goal-btn" onClick={() => finishGoal(g)}>
+                🎉 Finish goal
+              </button>
             ) : (
-              <button className="ghost" onClick={() => startEditGoal(g)}>Edit</button>
+              <span />
             )}
-            <button className="danger" onClick={() => setConfirmingDeleteId(g.id)}>Delete</button>
+            {!showHeader && menu}
           </div>
-          {doneCount > 0 && doneCount === goalTasks.length && !isFinished && (
-            <button className="primary finish-goal-btn" onClick={() => finishGoal(g)}>
-              🎉 Finish goal
-            </button>
-          )}
-        </div>
+        )}
 
         {confirmingDeleteId === g.id && (
           <div className="confirm-delete">

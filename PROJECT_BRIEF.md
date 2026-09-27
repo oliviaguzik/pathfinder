@@ -83,10 +83,25 @@ and writes to `auth.uid() = user_id`, and every insert in the app sets
   Changes to an existing database go in `migrations/`
 
 ## Design direction / visual preference
-Clean, minimal, native-feeling UI — white cards, subtle borders, small badges
-for priority/category, system font, now with a dark mode variant. The
-circular progress ring (vs. a linear bar) is the current standard for both
-goal cards and list rows.
+Clean, modern, calm — closer to Things/Todoist than a form-based admin tool.
+- One accent color (indigo) for actions, focus and progress; green only
+  means "done" (round checkboxes, Completed badges, full progress rings)
+- Subtle tinted background with a soft glow at the top; white cards with
+  light borders; translucent sticky nav; light and dark themes
+- Tasks page: a one-line quick-add bar (options expand while typing or via
+  "Options"); the list is grouped into Overdue / Today / Upcoming / No date,
+  with a collapsible Completed section
+- Task rows show a small details line (friendly dates like "Tomorrow" /
+  "Oct 19", goal, priority flag, effort, repeat); drag handles and
+  edit/delete appear on hover
+- Goal cards: status badge beside the progress ring; edit / reopen / delete
+  live in a "⋯" menu
+- Calendar has Month, Week and Day modes (remembered like the list/calendar
+  toggle); clicking a day opens a panel with that day's tasks and a quick
+  add for that date; busy month cells show "+N more"
+- All pages share one page width (1360px max), so switching views or pages
+  doesn't change the layout width
+- Normal-case field labels, not small uppercase
 
 ## Not yet built (roadmap)
 - **Context tag UI** (@home/@errand/@computer/@calls) — the `context` column

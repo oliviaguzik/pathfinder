@@ -13,7 +13,7 @@ export default function CircularProgress({ percent, size = 56, strokeWidth = 5 }
           cy={size / 2}
           r={radius}
           fill="none"
-          stroke="var(--accent-goals)"
+          stroke={clamped >= 100 ? "var(--success)" : "var(--accent)"}
           strokeWidth={strokeWidth}
           strokeDasharray={circumference}
           strokeDashoffset={offset}
