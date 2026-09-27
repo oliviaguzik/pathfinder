@@ -12,7 +12,7 @@ import {
   recurrenceLabel,
   nextOccurrence,
 } from "../lib/recurrence";
-import { computeGoalCompletionPatch } from "../lib/goalCompletion";
+import { computeGoalUncompletionPatch } from "../lib/goalCompletion";
 import { positionBetween, nextPosition, sortByPosition } from "../lib/reorder";
 import { useAuth } from "../lib/AuthProvider";
 
@@ -127,8 +127,8 @@ export default function TasksPage() {
   const [name, setName] = useState("");
   const [category, setCategory] = useState("General Life");
   const [goalId, setGoalId] = useState("");
-  const [priority, setPriority] = useState("Medium");
-  const [effort, setEffort] = useState("Medium");
+  const [priority, setPriority] = useState("");
+  const [effort, setEffort] = useState("");
   const [dueDate, setDueDate] = useState("");
   const [recurring, setRecurring] = useState(false);
   const [recurrencePreset, setRecurrencePreset] = useState("daily");
@@ -196,8 +196,8 @@ export default function TasksPage() {
       name,
       category,
       goal_id: category === "Goal-Related" && goalId ? goalId : null,
-      priority,
-      effort,
+      priority: priority || null,
+      effort: effort || null,
       due_date: dueDate || null,
       status: "To Do",
       recurring,
@@ -225,7 +225,7 @@ export default function TasksPage() {
       const goalTasksAfter = tasks
         .filter((t) => t.goal_id === task.goal_id)
         .map((t) => (t.id === task.id ? { ...t, status: newStatus } : t));
-      const patch = computeGoalCompletionPatch(goal, goalTasksAfter);
+      const patch = computeGoalUncompletionPatch(goal, goalTasksAfter);
       if (patch) {
         await supabase.from("goals").update(patch).eq("id", task.goal_id);
       }
@@ -262,8 +262,8 @@ export default function TasksPage() {
     setEditName(task.name);
     setEditCategory(task.category);
     setEditGoalId(task.goal_id || "");
-    setEditPriority(task.priority || "Medium");
-    setEditEffort(task.effort || "Medium");
+    setEditPriority(task.priority || "");
+    setEditEffort(task.effort || "");
     setEditDueDate(task.due_date || "");
     setEditRecurring(!!task.recurring);
     setEditRecurrencePreset(presetFromRecurrence(task.recurrence_unit || "day", task.recurrence_interval || 1));
@@ -281,8 +281,8 @@ export default function TasksPage() {
       name: editName,
       category: editCategory,
       goal_id: editCategory === "Goal-Related" && editGoalId ? editGoalId : null,
-      priority: editPriority,
-      effort: editEffort,
+      priority: editPriority || null,
+      effort: editEffort || null,
       due_date: editDueDate || null,
       recurring: editRecurring,
       recurrence_unit: recurrence?.unit || null,
@@ -339,11 +339,23 @@ export default function TasksPage() {
         )}
         <div className="field">
           <label>Priority</label>
-          <Select value={editPriority} onChange={setEditPriority} options={["High", "Medium", "Low"]} />
+          <Select
+            value={editPriority}
+            onChange={setEditPriority}
+            options={[{ value: "", label: "N/A" }, "High", "Medium", "Low"]}
+            onClear={editPriority ? () => setEditPriority("") : undefined}
+            clearLabel="Clear priority"
+          />
         </div>
         <div className="field">
           <label>Effort</label>
-          <Select value={editEffort} onChange={setEditEffort} options={["Small", "Medium", "Large"]} />
+          <Select
+            value={editEffort}
+            onChange={setEditEffort}
+            options={[{ value: "", label: "N/A" }, "Small", "Medium", "Large"]}
+            onClear={editEffort ? () => setEditEffort("") : undefined}
+            clearLabel="Clear effort"
+          />
         </div>
         <div className="field">
           <label>Due date</label>
@@ -450,7 +462,9 @@ export default function TasksPage() {
         {t.recurring && (
           <span className="muted recurring-icon" title={recurrenceLabel(t)}>↻</span>
         )}
-        <span className={`badge badge-${t.priority?.toLowerCase()}`}>Priority: {t.priority}</span>
+        {t.priority && (
+          <span className={`badge badge-${t.priority.toLowerCase()}`}>Priority: {t.priority}</span>
+        )}
         {t.effort && (
           <span className="muted effort-abbr" title={`Effort: ${t.effort}`}>{t.effort.charAt(0)}</span>
         )}
@@ -463,6 +477,40 @@ export default function TasksPage() {
           <button className="ghost icon-btn" onClick={() => startEditTask(t)} aria-label="Edit task" title="Edit">✎</button>
           <button className="ghost icon-btn" onClick={() => deleteTask(t.id)} aria-label="Delete task" title="Delete">×</button>
         </div>
+      </div>
+    );
+  }
+
+  function renderUpcomingTaskRow(t) {
+    return (
+      <div
+        className="undated-task-row"
+        key={t.id}
+        draggable
+        onDragStart={(e) => {
+          e.dataTransfer.effectAllowed = "move";
+          setDraggedTaskId(t.id);
+        }}
+        onDragEnd={() => setDraggedTaskId(null)}
+      >
+        <input
+          type="checkbox"
+          className="checkbox"
+          checked={t.status === "Done"}
+          onChange={() => toggleDone(t)}
+        />
+        <div className="upcoming-task-info">
+          <span
+            className={`upcoming-task-name ${t.status === "Done" ? "done" : ""}`}
+            onClick={() => startEditTask(t)}
+          >
+            {t.name}
+          </span>
+          <div className={isOverdue(t) ? "due-date overdue" : isDueToday(t) ? "due-date today" : "muted due-date"}>
+            {isOverdue(t) ? `Overdue: ${t.due_date}` : isDueToday(t) ? "Due today" : `Due ${t.due_date}`}
+          </div>
+        </div>
+        <button className="ghost row-delete-btn" onClick={() => deleteTask(t.id)} aria-label="Delete task">×</button>
       </div>
     );
   }
@@ -515,6 +563,7 @@ export default function TasksPage() {
   for (const key of Object.keys(tasksByDate)) {
     tasksByDate[key] = sortDoneLast(tasksByDate[key]);
   }
+  const upcomingTasks = sortTasksList(visibleTasks.filter((t) => t.due_date), "due");
 
   return (
     <div>
@@ -554,11 +603,25 @@ export default function TasksPage() {
         )}
         <div className="field">
           <label htmlFor="task-priority">Priority</label>
-          <Select id="task-priority" value={priority} onChange={setPriority} options={["High", "Medium", "Low"]} />
+          <Select
+            id="task-priority"
+            value={priority}
+            onChange={setPriority}
+            options={[{ value: "", label: "N/A" }, "High", "Medium", "Low"]}
+            onClear={priority ? () => setPriority("") : undefined}
+            clearLabel="Clear priority"
+          />
         </div>
         <div className="field">
           <label htmlFor="task-effort">Effort</label>
-          <Select id="task-effort" value={effort} onChange={setEffort} options={["Small", "Medium", "Large"]} />
+          <Select
+            id="task-effort"
+            value={effort}
+            onChange={setEffort}
+            options={[{ value: "", label: "N/A" }, "Small", "Medium", "Large"]}
+            onClear={effort ? () => setEffort("") : undefined}
+            clearLabel="Clear effort"
+          />
         </div>
         <div className="field">
           <label htmlFor="task-due">Due date</label>
@@ -811,22 +874,33 @@ export default function TasksPage() {
             className="card calendar-side"
             style={calendarSideMaxHeight ? { maxHeight: calendarSideMaxHeight } : undefined}
           >
-            <div className="section-label">No due date</div>
-            <div
-              className={`calendar-side-list ${draggedTaskId ? "drop-target" : ""}`}
-              onDragOver={(e) => {
-                if (!draggedTaskId) return;
-                e.preventDefault();
-              }}
-              onDrop={(e) => {
-                e.preventDefault();
-                if (draggedTaskId) moveTaskToDate(draggedTaskId, null);
-                setDraggedTaskId(null);
-              }}
-            >
-              {loading && <p className="muted">Loading...</p>}
-              {!loading && undatedTasks.length === 0 && <p className="muted">Nothing here.</p>}
-              {undatedTasks.map((t) => renderUndatedTaskRow(t))}
+            <div className="calendar-side-section">
+              <div className="section-label">Upcoming</div>
+              <div className="calendar-side-list">
+                {loading && <p className="muted">Loading...</p>}
+                {!loading && upcomingTasks.length === 0 && <p className="muted">Nothing here.</p>}
+                {upcomingTasks.map((t) => renderUpcomingTaskRow(t))}
+              </div>
+            </div>
+
+            <div className="calendar-side-section">
+              <div className="section-label">No due date</div>
+              <div
+                className={`calendar-side-list ${draggedTaskId ? "drop-target" : ""}`}
+                onDragOver={(e) => {
+                  if (!draggedTaskId) return;
+                  e.preventDefault();
+                }}
+                onDrop={(e) => {
+                  e.preventDefault();
+                  if (draggedTaskId) moveTaskToDate(draggedTaskId, null);
+                  setDraggedTaskId(null);
+                }}
+              >
+                {loading && <p className="muted">Loading...</p>}
+                {!loading && undatedTasks.length === 0 && <p className="muted">Nothing here.</p>}
+                {undatedTasks.map((t) => renderUndatedTaskRow(t))}
+              </div>
             </div>
           </div>
         </div>

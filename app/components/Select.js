@@ -13,6 +13,7 @@ export default function Select({ id, value, onChange, options, ariaLabel, onClea
   const normalized = options.map((o) => (typeof o === "string" ? { value: o, label: o } : o));
   const selectedIndex = normalized.findIndex((o) => o.value === value);
   const selected = selectedIndex >= 0 ? normalized[selectedIndex] : null;
+  const showAsPlaceholder = !selected || selected.value === "";
 
   function reposition() {
     if (!triggerRef.current) return;
@@ -96,7 +97,7 @@ export default function Select({ id, value, onChange, options, ariaLabel, onClea
           onClick={() => (open ? setOpen(false) : openMenu())}
           onKeyDown={handleTriggerKeyDown}
         >
-          <span className={selected ? "select-value" : "select-value select-placeholder"}>
+          <span className={showAsPlaceholder ? "select-value select-placeholder" : "select-value"}>
             {selected ? selected.label : "Select..."}
           </span>
           <span className="select-caret">▾</span>

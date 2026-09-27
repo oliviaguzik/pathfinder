@@ -5,6 +5,7 @@ import { supabase } from "../../lib/supabaseClient";
 import CircularProgress from "../components/CircularProgress";
 import Modal from "../components/Modal";
 import Select from "../components/Select";
+import Celebration from "../components/Celebration";
 import {
   RECURRENCE_PRESET_OPTIONS,
   presetFromRecurrence,
@@ -12,7 +13,7 @@ import {
   recurrenceLabel,
   nextOccurrence,
 } from "../../lib/recurrence";
-import { isGoalFullyDone, computeGoalCompletionPatch } from "../../lib/goalCompletion";
+import { computeGoalUncompletionPatch } from "../../lib/goalCompletion";
 import { positionBetween, nextPosition, sortByPosition } from "../../lib/reorder";
 import { useAuth } from "../../lib/AuthProvider";
 
@@ -50,8 +51,8 @@ export default function GoalsPage() {
 
   const [addTaskForId, setAddTaskForId] = useState(null);
   const [taskName, setTaskName] = useState("");
-  const [taskPriority, setTaskPriority] = useState("Medium");
-  const [taskEffort, setTaskEffort] = useState("Medium");
+  const [taskPriority, setTaskPriority] = useState("");
+  const [taskEffort, setTaskEffort] = useState("");
   const [taskDueDate, setTaskDueDate] = useState("");
   const [taskRecurring, setTaskRecurring] = useState(false);
   const [taskRecurrencePreset, setTaskRecurrencePreset] = useState("daily");
@@ -68,6 +69,8 @@ export default function GoalsPage() {
 
   const [draggedGoalId, setDraggedGoalId] = useState(null);
   const [dragOverGoalId, setDragOverGoalId] = useState(null);
+
+  const [celebration, setCelebration] = useState({ key: 0, message: "" });
 
   useEffect(() => {
     const stored = localStorage.getItem("goalsView");
@@ -162,8 +165,8 @@ export default function GoalsPage() {
   function toggleAddTaskFor(goalId) {
     setAddTaskForId((prev) => (prev === goalId ? null : goalId));
     setTaskName("");
-    setTaskPriority("Medium");
-    setTaskEffort("Medium");
+    setTaskPriority("");
+    setTaskEffort("");
     setTaskDueDate("");
     setTaskRecurring(false);
     setTaskRecurrencePreset("daily");
@@ -178,8 +181,8 @@ export default function GoalsPage() {
       name: taskName,
       category: "Goal-Related",
       goal_id: goalId,
-      priority: taskPriority,
-      effort: taskEffort,
+      priority: taskPriority || null,
+      effort: taskEffort || null,
       due_date: taskDueDate || null,
       status: "To Do",
       recurring: taskRecurring,
@@ -196,8 +199,8 @@ export default function GoalsPage() {
   function startEditTask(task) {
     setEditingTaskId(task.id);
     setEditTaskName(task.name);
-    setEditTaskPriority(task.priority || "Medium");
-    setEditTaskEffort(task.effort || "Medium");
+    setEditTaskPriority(task.priority || "");
+    setEditTaskEffort(task.effort || "");
     setEditTaskDueDate(task.due_date || "");
     setEditTaskRecurring(!!task.recurring);
     setEditTaskRecurrencePreset(presetFromRecurrence(task.recurrence_unit || "day", task.recurrence_interval || 1));
@@ -215,8 +218,8 @@ export default function GoalsPage() {
       : null;
     await supabase.from("tasks").update({
       name: editTaskName,
-      priority: editTaskPriority,
-      effort: editTaskEffort,
+      priority: editTaskPriority || null,
+      effort: editTaskEffort || null,
       due_date: editTaskDueDate || null,
       recurring: editTaskRecurring,
       recurrence_unit: recurrence?.unit || null,
@@ -237,7 +240,7 @@ export default function GoalsPage() {
       const goalTasksAfter = tasks
         .filter((t) => t.goal_id === task.goal_id)
         .map((t) => (t.id === task.id ? { ...t, status: newStatus } : t));
-      const patch = computeGoalCompletionPatch(goal, goalTasksAfter);
+      const patch = computeGoalUncompletionPatch(goal, goalTasksAfter);
       if (patch) {
         await supabase.from("goals").update(patch).eq("id", task.goal_id);
       }
@@ -247,6 +250,23 @@ export default function GoalsPage() {
 
   async function deleteTask(id) {
     await supabase.from("tasks").delete().eq("id", id);
+    loadData();
+  }
+
+  async function finishGoal(goal) {
+    await supabase
+      .from("goals")
+      .update({ completed_at: new Date().toISOString(), status: "Achieved" })
+      .eq("id", goal.id);
+    setCelebration({ key: Date.now(), message: `🎉 "${goal.name}" complete!` });
+    loadData();
+  }
+
+  async function reopenGoal(goal) {
+    await supabase
+      .from("goals")
+      .update({ completed_at: null, status: "In Progress" })
+      .eq("id", goal.id);
     loadData();
   }
 
@@ -293,11 +313,12 @@ export default function GoalsPage() {
     if (total === 0) {
       return isPastDue ? { text: "Past due", cls: "badge-high" } : null;
     }
-    if (doneCount === total) {
-      const completedText = goal.completed_at
-        ? `Completed ${new Date(goal.completed_at).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })}`
-        : "Completed";
+    if (goal.completed_at) {
+      const completedText = `Completed ${new Date(goal.completed_at).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })}`;
       return { text: completedText, cls: "badge-life" };
+    }
+    if (doneCount === total) {
+      return { text: "Ready to finish", cls: "badge-life" };
     }
     if (isPastDue) {
       return { text: "Past due", cls: "badge-high" };
@@ -339,11 +360,23 @@ export default function GoalsPage() {
         </div>
         <div className="field">
           <label>Priority</label>
-          <Select value={taskPriority} onChange={setTaskPriority} options={["High", "Medium", "Low"]} />
+          <Select
+            value={taskPriority}
+            onChange={setTaskPriority}
+            options={[{ value: "", label: "N/A" }, "High", "Medium", "Low"]}
+            onClear={taskPriority ? () => setTaskPriority("") : undefined}
+            clearLabel="Clear priority"
+          />
         </div>
         <div className="field">
           <label>Effort</label>
-          <Select value={taskEffort} onChange={setTaskEffort} options={["Small", "Medium", "Large"]} />
+          <Select
+            value={taskEffort}
+            onChange={setTaskEffort}
+            options={[{ value: "", label: "N/A" }, "Small", "Medium", "Large"]}
+            onClear={taskEffort ? () => setTaskEffort("") : undefined}
+            clearLabel="Clear effort"
+          />
         </div>
         <div className="field">
           <label>Due date</label>
@@ -398,11 +431,23 @@ export default function GoalsPage() {
         </div>
         <div className="field">
           <label>Priority</label>
-          <Select value={editTaskPriority} onChange={setEditTaskPriority} options={["High", "Medium", "Low"]} />
+          <Select
+            value={editTaskPriority}
+            onChange={setEditTaskPriority}
+            options={[{ value: "", label: "N/A" }, "High", "Medium", "Low"]}
+            onClear={editTaskPriority ? () => setEditTaskPriority("") : undefined}
+            clearLabel="Clear priority"
+          />
         </div>
         <div className="field">
           <label>Effort</label>
-          <Select value={editTaskEffort} onChange={setEditTaskEffort} options={["Small", "Medium", "Large"]} />
+          <Select
+            value={editTaskEffort}
+            onChange={setEditTaskEffort}
+            options={[{ value: "", label: "N/A" }, "Small", "Medium", "Large"]}
+            onClear={editTaskEffort ? () => setEditTaskEffort("") : undefined}
+            clearLabel="Clear effort"
+          />
         </div>
         <div className="field">
           <label>Due date</label>
@@ -452,7 +497,7 @@ export default function GoalsPage() {
     );
   }
 
-  function renderTaskRow(t) {
+  function renderTaskRow(t, locked = false) {
     if (editingTaskId === t.id) {
       return <div key={t.id} style={{ padding: "6px 0" }}>{renderEditTaskForm(t)}</div>;
     }
@@ -462,19 +507,22 @@ export default function GoalsPage() {
           type="checkbox"
           className="checkbox"
           checked={t.status === "Done"}
+          disabled={locked}
           onChange={() => toggleDone(t)}
         />
         <span
-          className={`task-name task-name-editable ${t.status === "Done" ? "done" : ""}`}
-          onClick={() => startEditTask(t)}
+          className={`task-name ${locked ? "" : "task-name-editable"} ${t.status === "Done" ? "done" : ""}`}
+          onClick={locked ? undefined : () => startEditTask(t)}
         >
           {t.name}
         </span>
         {t.recurring && (
           <span className="muted recurring-icon" title={recurrenceLabel(t)}>↻</span>
         )}
-        <span className={`badge badge-${t.priority?.toLowerCase()}`}>{t.priority}</span>
-        <button className="ghost row-delete-btn" onClick={() => deleteTask(t.id)} aria-label="Delete task">×</button>
+        {t.priority && <span className={`badge badge-${t.priority.toLowerCase()}`}>{t.priority}</span>}
+        {!locked && (
+          <button className="ghost row-delete-btn" onClick={() => deleteTask(t.id)} aria-label="Delete task">×</button>
+        )}
       </div>
     );
   }
@@ -500,6 +548,7 @@ export default function GoalsPage() {
     }
 
     const addingHere = addTaskForId === g.id;
+    const isFinished = !!g.completed_at;
 
     return (
       <>
@@ -514,11 +563,20 @@ export default function GoalsPage() {
               <CircularProgress percent={pct} size={48} strokeWidth={5} />
               <span className="muted">{doneCount} / {goalTasks.length} tasks done</span>
             </div>
+            {doneCount > 0 && doneCount === goalTasks.length && !isFinished && (
+              <button className="primary finish-goal-btn" onClick={() => finishGoal(g)}>
+                🎉 Finish goal
+              </button>
+            )}
           </>
         )}
 
         <div className="row" style={{ gap: 6, marginTop: showHeader ? 10 : 0 }}>
-          <button className="ghost" onClick={() => startEditGoal(g)}>Edit</button>
+          {isFinished ? (
+            <button className="ghost" onClick={() => reopenGoal(g)}>Reopen</button>
+          ) : (
+            <button className="ghost" onClick={() => startEditGoal(g)}>Edit</button>
+          )}
           <button className="danger" onClick={() => setConfirmingDeleteId(g.id)}>Delete</button>
         </div>
 
@@ -546,32 +604,35 @@ export default function GoalsPage() {
         <div className="tile-tasks-box">
           <div className="tile-tasks-header">
             <span>Tasks</span>
-            {!addingHere && (
+            {!addingHere && !isFinished && (
               <button className="ghost" onClick={() => toggleAddTaskFor(g.id)}>+ Add task</button>
             )}
           </div>
 
-          {addingHere && <div className="tile-add-task-form">{renderAddTaskForm(g.id)}</div>}
+          {addingHere && !isFinished && <div className="tile-add-task-form">{renderAddTaskForm(g.id)}</div>}
 
           <div className="tile-tasks-list">
             {goalTasks.length === 0 && <p className="muted">No tasks linked yet.</p>}
-            {goalTasks.map((t) => renderTaskRow(t))}
+            {goalTasks.map((t) => renderTaskRow(t, isFinished))}
           </div>
         </div>
       </>
     );
   }
 
-  // Manual drag order first, then fully completed goals sink to the bottom
-  // (stable sort preserves relative order within each group).
+  // Manual drag order first, then finished goals sink to the bottom
+  // (stable sort preserves relative order within each group). A goal with
+  // all tasks done but not yet explicitly finished stays in place, since
+  // finishing is a deliberate action, not an automatic side effect.
   const sortedGoals = sortByPosition(goals).sort((a, b) => {
-    const aDone = isGoalFullyDone(tasksFor(a.id));
-    const bDone = isGoalFullyDone(tasksFor(b.id));
+    const aDone = !!a.completed_at;
+    const bDone = !!b.completed_at;
     return aDone === bDone ? 0 : aDone ? 1 : -1;
   });
 
   return (
     <div>
+      <Celebration trigger={celebration.key} message={celebration.message} />
       <div className="row-between" style={{ alignItems: "flex-start" }}>
         <div>
           <h1>Goals</h1>
