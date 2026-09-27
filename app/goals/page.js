@@ -11,7 +11,7 @@ import TaskFields from "../components/TaskFields";
 import TaskMeta from "../components/TaskMeta";
 import Menu from "../components/Menu";
 import { nextOccurrence } from "../../lib/recurrence";
-import { goalStatusFor, syncGoalStatuses } from "../../lib/goalCompletion";
+import { goalStatusFor, isGoalFullyDone, syncGoalStatuses } from "../../lib/goalCompletion";
 import { positionBetween, nextPosition, sortByPosition } from "../../lib/reorder";
 import { parseLocalDate, toISODateLocal, todayLocalISODate } from "../../lib/dates";
 import { EMPTY_TASK_FORM, taskFormFromTask, taskFieldsFromForm } from "../../lib/taskForm";
@@ -49,6 +49,7 @@ export default function GoalsPage() {
 
   const [celebration, setCelebration] = useState({ key: 0, message: "" });
   const [celebratingGoalId, setCelebratingGoalId] = useState(null);
+  const [showFinished, setShowFinished] = useState(false);
 
   useEffect(() => {
     const stored = localStorage.getItem("goalsView");
@@ -387,6 +388,25 @@ export default function GoalsPage() {
     );
   }
 
+  // Finishing is deliberate: once every task is done the badge reads
+  // "Ready to finish" and this button appears at the end of the progress row.
+  function renderFinishButton(g, goalTasks) {
+    if (g.completed_at || !isGoalFullyDone(goalTasks)) return null;
+    return (
+      <button
+        type="button"
+        className="primary finish-goal-btn"
+        onClick={(e) => {
+          e.stopPropagation();
+          finishGoal(g);
+        }}
+      >
+        <Icon name="check" size={14} />
+        Finish goal
+      </button>
+    );
+  }
+
   function renderGoalBody(g, goalTasks, pace, pct, doneCount, { showHeader = true } = {}) {
     if (editingGoalId === g.id) {
       return (
@@ -413,7 +433,6 @@ export default function GoalsPage() {
 
     const addingHere = addTaskForId === g.id;
     const isFinished = !!g.completed_at;
-    const canFinish = doneCount > 0 && doneCount === goalTasks.length && !isFinished;
     const menu = (
       <Menu
         label={`Actions for ${g.name}`}
@@ -435,28 +454,22 @@ export default function GoalsPage() {
               {menu}
             </div>
             {g.target_date && <div className="muted" style={{ marginTop: 2 }}>{targetLine(g)}</div>}
-            <div className="row" style={{ marginTop: 12, gap: 12 }}>
+            <div className="goal-progress-row">
               <CircularProgress percent={pct} size={48} strokeWidth={5} />
               <div className="goal-progress-text">
                 {pace && <span className={`badge ${pace.cls}`}>{pace.text}</span>}
                 <span className="muted">{doneCount} / {goalTasks.length} tasks done</span>
               </div>
+              {renderFinishButton(g, goalTasks)}
             </div>
           </>
         )}
 
         {g.notes && <p className="goal-notes" style={{ marginTop: showHeader ? 10 : 0 }}>{g.notes}</p>}
 
-        {(canFinish || !showHeader) && (
-          <div className="row-between" style={{ marginTop: showHeader || g.notes ? 10 : 0, flexWrap: "wrap", gap: 8 }}>
-            {canFinish ? (
-              <button className="primary finish-goal-btn" onClick={() => finishGoal(g)}>
-                🎉 Finish goal
-              </button>
-            ) : (
-              <span />
-            )}
-            {!showHeader && menu}
+        {!showHeader && (
+          <div className="row" style={{ justifyContent: "flex-end", marginTop: g.notes ? 6 : -4 }}>
+            {menu}
           </div>
         )}
 
@@ -509,51 +522,15 @@ export default function GoalsPage() {
     const bDone = !!b.completed_at;
     return aDone === bDone ? 0 : aDone ? 1 : -1;
   });
+  const activeGoals = sortedGoals.filter((g) => !g.completed_at);
+  const finishedGoals = sortedGoals.filter((g) => g.completed_at);
 
-  return (
-    <div>
-      <Celebration trigger={celebration.key} message={celebration.message} subtitle={celebration.subtitle} />
-      <div className="row-between" style={{ alignItems: "flex-start" }}>
-        <div>
-          <h1>Goals</h1>
-          <p className="page-sub">Track progress toward the things that matter beyond day-to-day tasks.</p>
-        </div>
-        <div className="row" style={{ gap: 10 }}>
-          <div className="row goals-view-toggle" style={{ gap: 4 }}>
-            <button
-              className={`ghost view-toggle-btn ${view === "grid" ? "active" : ""}`}
-              onClick={() => changeView("grid")}
-              aria-label="Grid view"
-            >
-              <Icon name="grid" size={14} />
-            </button>
-            <button
-              className={`ghost view-toggle-btn ${view === "list" ? "active" : ""}`}
-              onClick={() => changeView("list")}
-              aria-label="List view"
-            >
-              <Icon name="list" size={15} />
-            </button>
-          </div>
-          <button className="primary" onClick={() => setAddOpen(true)}>+ Add goal</button>
-        </div>
-      </div>
-
-      {loading && (
-        <div className="card" style={{ marginTop: 16 }}>
-          <Skeleton rows={3} />
-        </div>
-      )}
-      {!loading && goals.length === 0 && (
-        <div className="empty-state">
-          <span className="empty-state-icon">🎯</span>
-          <span>No goals yet — add one above.</span>
-        </div>
-      )}
-
-      {view === "grid" ? (
+  function renderGoalCollection(list) {
+    if (list.length === 0) return null;
+    return (
+      view === "grid" ? (
         <div className="goal-grid">
-          {sortedGoals.map((g) => {
+          {list.map((g) => {
             const goalTasks = sortByDueDate(tasksFor(g.id));
             const doneCount = goalTasks.filter((t) => t.status === "Done").length;
             const pct = goalTasks.length > 0 ? Math.round((doneCount / goalTasks.length) * 100) : 0;
@@ -601,7 +578,7 @@ export default function GoalsPage() {
         </div>
       ) : (
         <div className="goal-list">
-          {sortedGoals.map((g) => {
+          {list.map((g) => {
             const goalTasks = sortByDueDate(tasksFor(g.id));
             const doneCount = goalTasks.filter((t) => t.status === "Done").length;
             const pct = goalTasks.length > 0 ? Math.round((doneCount / goalTasks.length) * 100) : 0;
@@ -667,6 +644,7 @@ export default function GoalsPage() {
                       <span className="muted">{doneCount} / {goalTasks.length} tasks done</span>
                     </div>
                   </div>
+                  {renderFinishButton(g, goalTasks)}
                   <span className="goal-list-chevron">{isOpen ? "⌄" : "›"}</span>
                 </div>
 
@@ -679,6 +657,74 @@ export default function GoalsPage() {
             );
           })}
         </div>
+      )
+    );
+  }
+
+  return (
+    <div>
+      <Celebration trigger={celebration.key} message={celebration.message} subtitle={celebration.subtitle} />
+      <div className="row-between" style={{ alignItems: "flex-start" }}>
+        <div>
+          <h1>Goals</h1>
+          <p className="page-sub">Track progress toward the things that matter beyond day-to-day tasks.</p>
+        </div>
+        <div className="row" style={{ gap: 10 }}>
+          <div className="row goals-view-toggle" style={{ gap: 4 }}>
+            <button
+              className={`ghost view-toggle-btn ${view === "grid" ? "active" : ""}`}
+              onClick={() => changeView("grid")}
+              aria-label="Grid view"
+            >
+              <Icon name="grid" size={14} />
+            </button>
+            <button
+              className={`ghost view-toggle-btn ${view === "list" ? "active" : ""}`}
+              onClick={() => changeView("list")}
+              aria-label="List view"
+            >
+              <Icon name="list" size={15} />
+            </button>
+          </div>
+          <button className="primary" onClick={() => setAddOpen(true)}>+ Add goal</button>
+        </div>
+      </div>
+
+      {loading && (
+        <div className="card" style={{ marginTop: 16 }}>
+          <Skeleton rows={3} />
+        </div>
+      )}
+      {!loading && goals.length === 0 && (
+        <div className="empty-state">
+          <span className="empty-state-icon">🎯</span>
+          <span>No goals yet — add one above.</span>
+        </div>
+      )}
+
+      {!loading && goals.length > 0 && activeGoals.length === 0 && (
+        <p className="muted" style={{ marginTop: 16 }}>No active goals right now — add one above.</p>
+      )}
+      {renderGoalCollection(activeGoals)}
+
+      {finishedGoals.length > 0 && (
+        <section className="finished-goals">
+          <h2 className="task-group-header">
+            <button
+              type="button"
+              className="task-group-toggle"
+              aria-expanded={showFinished}
+              onClick={() => setShowFinished((v) => !v)}
+            >
+              <span className={`task-group-chevron ${showFinished ? "open" : ""}`}>
+                <Icon name="chevronRight" size={14} />
+              </span>
+              Finished goals
+              <span className="task-group-count">{finishedGoals.length}</span>
+            </button>
+          </h2>
+          {showFinished && renderGoalCollection(finishedGoals)}
+        </section>
       )}
 
       <Modal open={addOpen} onClose={() => setAddOpen(false)} title="Add goal">

@@ -1121,8 +1121,13 @@ button.danger:hover { background: #fdf2f2; border-color: var(--danger); }
   .goal-grid { grid-template-columns: 1fr; }
 }
 
+.finished-goals { margin-top: 28px; }
+.finished-goals .task-group-header { padding-left: 0; }
+.finished-goals .goal-grid, .finished-goals .goal-list { margin-top: 8px; }
+
 .goal-tile-name { font-size: 15.5px; font-weight: 650; letter-spacing: -0.01em; line-height: 1.35; padding-top: 3px; }
-.goal-progress-text { display: flex; flex-direction: column; align-items: flex-start; gap: 5px; }
+.goal-progress-row { display: flex; align-items: center; gap: 12px; margin-top: 12px; }
+.goal-progress-text { display: flex; flex-direction: column; align-items: flex-start; gap: 5px; min-width: 0; }
 textarea { resize: vertical; line-height: 1.45; }
 .goal-notes {
   margin-bottom: 0;
@@ -1246,11 +1251,14 @@ textarea { resize: vertical; line-height: 1.45; }
 }
 
 button.finish-goal-btn {
-  background: var(--success);
-  border-color: var(--success);
-  color: white;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+  padding: 7px 14px 7px 11px;
+  font-size: 13px;
+  flex-shrink: 0;
 }
-button.finish-goal-btn:hover { background: var(--success); filter: brightness(1.06); }
 
 .celebration-overlay {
   position: fixed;
