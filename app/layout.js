@@ -1,5 +1,8 @@
+import { Inter } from "next/font/google";
 import "./globals.css";
 import AuthGate from "./components/AuthGate";
+
+const inter = Inter({ subsets: ["latin"], variable: "--font-inter", display: "swap" });
 
 export const metadata = {
   title: "PathFinder",
@@ -22,7 +25,7 @@ export default function RootLayout({ children }) {
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
       </head>
-      <body>
+      <body className={inter.variable}>
         <AuthGate>{children}</AuthGate>
       </body>
     </html>

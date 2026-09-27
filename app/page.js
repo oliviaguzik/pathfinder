@@ -5,6 +5,8 @@ import { supabase } from "../lib/supabaseClient";
 import Select from "./components/Select";
 import Modal from "./components/Modal";
 import Popover from "./components/Popover";
+import Skeleton from "./components/Skeleton";
+import Icon from "./components/Icon";
 import {
   RECURRENCE_PRESET_OPTIONS,
   presetFromRecurrence,
@@ -147,6 +149,7 @@ export default function TasksPage() {
 
   const [draggedTaskId, setDraggedTaskId] = useState(null);
   const [dragOverTaskId, setDragOverTaskId] = useState(null);
+  const [confirmingDeleteTaskId, setConfirmingDeleteTaskId] = useState(null);
 
   useEffect(() => {
     const stored = localStorage.getItem("tasksView");
@@ -236,6 +239,21 @@ export default function TasksPage() {
   async function deleteTask(id) {
     await supabase.from("tasks").delete().eq("id", id);
     loadData();
+  }
+
+  // First click arms the delete button (auto-disarms after a few seconds);
+  // a second click while armed actually deletes. Avoids a fat-finger delete
+  // on a dense list without a full confirm panel per row.
+  function handleDeleteClick(id) {
+    if (confirmingDeleteTaskId === id) {
+      deleteTask(id);
+      setConfirmingDeleteTaskId(null);
+      return;
+    }
+    setConfirmingDeleteTaskId(id);
+    setTimeout(() => {
+      setConfirmingDeleteTaskId((current) => (current === id ? null : current));
+    }, 3000);
   }
 
   async function moveTaskToDate(taskId, dueDateStr) {
@@ -445,7 +463,7 @@ export default function TasksPage() {
           aria-label="Drag to reorder"
           title="Drag to reorder"
         >
-          ⠿
+          <Icon name="dragHandle" size={13} />
         </span>
         <input
           type="checkbox"
@@ -474,8 +492,17 @@ export default function TasksPage() {
           </span>
         )}
         <div className="task-actions">
-          <button className="ghost icon-btn" onClick={() => startEditTask(t)} aria-label="Edit task" title="Edit">✎</button>
-          <button className="ghost icon-btn" onClick={() => deleteTask(t.id)} aria-label="Delete task" title="Delete">×</button>
+          <button className="ghost icon-btn" onClick={() => startEditTask(t)} aria-label="Edit task" title="Edit">
+            <Icon name="edit" size={14} />
+          </button>
+          <button
+            className={confirmingDeleteTaskId === t.id ? "danger icon-btn" : "ghost icon-btn"}
+            onClick={() => handleDeleteClick(t.id)}
+            aria-label={confirmingDeleteTaskId === t.id ? "Confirm delete task" : "Delete task"}
+            title={confirmingDeleteTaskId === t.id ? "Click again to delete" : "Delete"}
+          >
+            {confirmingDeleteTaskId === t.id ? "Delete?" : "×"}
+          </button>
         </div>
       </div>
     );
@@ -510,7 +537,14 @@ export default function TasksPage() {
             {isOverdue(t) ? `Overdue: ${t.due_date}` : isDueToday(t) ? "Due today" : `Due ${t.due_date}`}
           </div>
         </div>
-        <button className="ghost row-delete-btn" onClick={() => deleteTask(t.id)} aria-label="Delete task">×</button>
+        <button
+          className={confirmingDeleteTaskId === t.id ? "danger row-delete-btn" : "ghost row-delete-btn"}
+          onClick={() => handleDeleteClick(t.id)}
+          aria-label={confirmingDeleteTaskId === t.id ? "Confirm delete task" : "Delete task"}
+          title={confirmingDeleteTaskId === t.id ? "Click again to delete" : "Delete"}
+        >
+          {confirmingDeleteTaskId === t.id ? "Delete?" : "×"}
+        </button>
       </div>
     );
   }
@@ -539,7 +573,14 @@ export default function TasksPage() {
         >
           {t.name}
         </span>
-        <button className="ghost row-delete-btn" onClick={() => deleteTask(t.id)} aria-label="Delete task">×</button>
+        <button
+          className={confirmingDeleteTaskId === t.id ? "danger row-delete-btn" : "ghost row-delete-btn"}
+          onClick={() => handleDeleteClick(t.id)}
+          aria-label={confirmingDeleteTaskId === t.id ? "Confirm delete task" : "Delete task"}
+          title={confirmingDeleteTaskId === t.id ? "Click again to delete" : "Delete"}
+        >
+          {confirmingDeleteTaskId === t.id ? "Delete?" : "×"}
+        </button>
       </div>
     );
   }
@@ -762,23 +803,23 @@ export default function TasksPage() {
             onClick={() => changeView("list")}
             aria-label="List view"
           >
-            ☰
+            <Icon name="list" size={15} />
           </button>
           <button
             className={`ghost view-toggle-btn ${view === "calendar" ? "active" : ""}`}
             onClick={() => changeView("calendar")}
             aria-label="Calendar view"
           >
-            📅
+            <Icon name="calendar" size={15} />
           </button>
         </div>
       </div>
 
       {view === "list" ? (
         <div className="card" style={{ marginTop: 20 }}>
-          {loading && <p className="muted">Loading...</p>}
+          {loading && <Skeleton rows={4} />}
           {!loading && sortedVisibleTasks.length === 0 && (
-            <p className="empty-state">No tasks match these filters yet.</p>
+            <p className="empty-state">🗒️ No tasks match these filters yet.</p>
           )}
           {sortedVisibleTasks.map((t) =>
             editingId === t.id ? (
@@ -877,7 +918,7 @@ export default function TasksPage() {
             <div className="calendar-side-section">
               <div className="section-label">Upcoming</div>
               <div className="calendar-side-list">
-                {loading && <p className="muted">Loading...</p>}
+                {loading && <Skeleton rows={2} />}
                 {!loading && upcomingTasks.length === 0 && <p className="muted">Nothing here.</p>}
                 {upcomingTasks.map((t) => renderUpcomingTaskRow(t))}
               </div>
@@ -897,7 +938,7 @@ export default function TasksPage() {
                   setDraggedTaskId(null);
                 }}
               >
-                {loading && <p className="muted">Loading...</p>}
+                {loading && <Skeleton rows={2} />}
                 {!loading && undatedTasks.length === 0 && <p className="muted">Nothing here.</p>}
                 {undatedTasks.map((t) => renderUndatedTaskRow(t))}
               </div>

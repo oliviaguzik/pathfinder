@@ -6,6 +6,8 @@ import CircularProgress from "../components/CircularProgress";
 import Modal from "../components/Modal";
 import Select from "../components/Select";
 import Celebration from "../components/Celebration";
+import Skeleton from "../components/Skeleton";
+import Icon from "../components/Icon";
 import {
   RECURRENCE_PRESET_OPTIONS,
   presetFromRecurrence,
@@ -67,10 +69,12 @@ export default function GoalsPage() {
   const [editTaskRecurrencePreset, setEditTaskRecurrencePreset] = useState("daily");
   const [editTaskRecurrenceCustomDays, setEditTaskRecurrenceCustomDays] = useState("2");
 
+  const [confirmingDeleteTaskId, setConfirmingDeleteTaskId] = useState(null);
   const [draggedGoalId, setDraggedGoalId] = useState(null);
   const [dragOverGoalId, setDragOverGoalId] = useState(null);
 
   const [celebration, setCelebration] = useState({ key: 0, message: "" });
+  const [celebratingGoalId, setCelebratingGoalId] = useState(null);
 
   useEffect(() => {
     const stored = localStorage.getItem("goalsView");
@@ -253,12 +257,34 @@ export default function GoalsPage() {
     loadData();
   }
 
+  // First click arms the delete button (auto-disarms after a few seconds);
+  // a second click while armed actually deletes.
+  function handleDeleteTaskClick(id) {
+    if (confirmingDeleteTaskId === id) {
+      deleteTask(id);
+      setConfirmingDeleteTaskId(null);
+      return;
+    }
+    setConfirmingDeleteTaskId(id);
+    setTimeout(() => {
+      setConfirmingDeleteTaskId((current) => (current === id ? null : current));
+    }, 3000);
+  }
+
   async function finishGoal(goal) {
+    const count = tasksFor(goal.id).length;
+
     await supabase
       .from("goals")
       .update({ completed_at: new Date().toISOString(), status: "Achieved" })
       .eq("id", goal.id);
-    setCelebration({ key: Date.now(), message: `🎉 "${goal.name}" complete!` });
+    setCelebration({
+      key: Date.now(),
+      message: `🎉 "${goal.name}" complete!`,
+      subtitle: `${count} task${count === 1 ? "" : "s"} done — nice work.`,
+    });
+    setCelebratingGoalId(goal.id);
+    setTimeout(() => setCelebratingGoalId((current) => (current === goal.id ? null : current)), 1200);
     loadData();
   }
 
@@ -521,7 +547,14 @@ export default function GoalsPage() {
         )}
         {t.priority && <span className={`badge badge-${t.priority.toLowerCase()}`}>{t.priority}</span>}
         {!locked && (
-          <button className="ghost row-delete-btn" onClick={() => deleteTask(t.id)} aria-label="Delete task">×</button>
+          <button
+            className={confirmingDeleteTaskId === t.id ? "danger row-delete-btn" : "ghost row-delete-btn"}
+            onClick={() => handleDeleteTaskClick(t.id)}
+            aria-label={confirmingDeleteTaskId === t.id ? "Confirm delete task" : "Delete task"}
+            title={confirmingDeleteTaskId === t.id ? "Click again to delete" : "Delete"}
+          >
+            {confirmingDeleteTaskId === t.id ? "Delete?" : "×"}
+          </button>
         )}
       </div>
     );
@@ -632,7 +665,7 @@ export default function GoalsPage() {
 
   return (
     <div>
-      <Celebration trigger={celebration.key} message={celebration.message} />
+      <Celebration trigger={celebration.key} message={celebration.message} subtitle={celebration.subtitle} />
       <div className="row-between" style={{ alignItems: "flex-start" }}>
         <div>
           <h1>Goals</h1>
@@ -645,22 +678,26 @@ export default function GoalsPage() {
               onClick={() => changeView("grid")}
               aria-label="Grid view"
             >
-              ⊞
+              <Icon name="grid" size={14} />
             </button>
             <button
               className={`ghost view-toggle-btn ${view === "list" ? "active" : ""}`}
               onClick={() => changeView("list")}
               aria-label="List view"
             >
-              ☰
+              <Icon name="list" size={15} />
             </button>
           </div>
           <button className="primary" onClick={() => setAddOpen(true)}>+ Add goal</button>
         </div>
       </div>
 
-      {loading && <p className="muted">Loading...</p>}
-      {!loading && goals.length === 0 && <p className="empty-state">No goals yet — add one above.</p>}
+      {loading && (
+        <div className="card" style={{ marginTop: 16 }}>
+          <Skeleton rows={3} />
+        </div>
+      )}
+      {!loading && goals.length === 0 && <p className="empty-state">🎯 No goals yet — add one above.</p>}
 
       {view === "grid" ? (
         <div className="goal-grid">
@@ -672,7 +709,7 @@ export default function GoalsPage() {
 
             return (
               <div
-                className={`card goal-tile-full ${dragOverGoalId === g.id ? "drag-over" : ""}`}
+                className={`card goal-tile-full ${dragOverGoalId === g.id ? "drag-over" : ""} ${celebratingGoalId === g.id ? "celebrating" : ""}`}
                 key={g.id}
                 onDragOver={(e) => {
                   if (!draggedGoalId) return;
@@ -703,7 +740,7 @@ export default function GoalsPage() {
                   title="Drag to reorder"
                   aria-label="Drag to reorder"
                 >
-                  ⠿
+                  <Icon name="dragHandle" size={13} />
                 </div>
                 {renderGoalBody(g, goalTasks, pace, pct, doneCount)}
               </div>
@@ -721,7 +758,7 @@ export default function GoalsPage() {
 
             return (
               <div
-                className={`card goal-list-row-full ${dragOverGoalId === g.id ? "drag-over" : ""}`}
+                className={`card goal-list-row-full ${dragOverGoalId === g.id ? "drag-over" : ""} ${celebratingGoalId === g.id ? "celebrating" : ""}`}
                 key={g.id}
                 onDragOver={(e) => {
                   if (!draggedGoalId) return;
@@ -765,7 +802,7 @@ export default function GoalsPage() {
                     title="Drag to reorder"
                     aria-label="Drag to reorder"
                   >
-                    ⠿
+                    <Icon name="dragHandle" size={13} />
                   </div>
                   <CircularProgress percent={pct} size={40} strokeWidth={4} />
                   <div className="goal-list-row-info">

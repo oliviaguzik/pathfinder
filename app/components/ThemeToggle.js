@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Icon from "./Icon";
 
 export default function ThemeToggle() {
   const [theme, setTheme] = useState(null);
@@ -23,7 +24,7 @@ export default function ThemeToggle() {
       aria-label="Toggle dark mode"
       style={{ visibility: theme ? "visible" : "hidden" }}
     >
-      {theme === "dark" ? "☀️" : "🌙"}
+      <Icon name={theme === "dark" ? "sun" : "moon"} size={15} />
     </button>
   );
 }
