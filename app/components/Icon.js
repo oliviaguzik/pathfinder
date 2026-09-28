@@ -53,6 +53,8 @@ const PATHS = {
   ),
   chevronRight: <path d="M9 6l6 6-6 6" />,
   check: <path d="M5 12.5l4.5 4.5L19 7.5" />,
+  star: <path d="M12 3.5l2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.9l-5.2 2.7 1-5.8-4.3-4.1 5.9-.9Z" />,
+  starFilled: <path d="M12 3.5l2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.9l-5.2 2.7 1-5.8-4.3-4.1 5.9-.9Z" />,
   flag: (
     <>
       <path d="M5 21V4" />
@@ -89,7 +91,7 @@ const PATHS = {
   ),
 };
 
-const FILLED = new Set(["grid", "dragHandle", "more"]);
+const FILLED = new Set(["grid", "dragHandle", "more", "starFilled"]);
 const MOON_PATH = "M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79Z";
 
 export default function Icon({ name, size = 16 }) {

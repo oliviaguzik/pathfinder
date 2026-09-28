@@ -10,12 +10,13 @@ import Icon from "../components/Icon";
 import TaskFields from "../components/TaskFields";
 import TaskMeta from "../components/TaskMeta";
 import Menu from "../components/Menu";
-import { nextOccurrence } from "../../lib/recurrence";
+import { toggleTaskDone } from "../../lib/taskActions";
 import { goalStatusFor, isGoalFullyDone, syncGoalStatuses } from "../../lib/goalCompletion";
 import { positionBetween, nextPosition, sortByPosition } from "../../lib/reorder";
 import { parseLocalDate, toISODateLocal, todayLocalISODate } from "../../lib/dates";
 import { EMPTY_TASK_FORM, taskFormFromTask, taskFieldsFromForm } from "../../lib/taskForm";
 import { useAuth } from "../../lib/AuthProvider";
+import { notifyWarning } from "../../lib/notify";
 
 export default function GoalsPage() {
   const { user } = useAuth();
@@ -78,7 +79,7 @@ export default function GoalsPage() {
 
   async function addGoal(e) {
     e.preventDefault();
-    if (!name.trim()) return;
+    if (!name.trim()) return notifyWarning("Give the goal a name first.");
     await supabase.from("goals").insert({
       name,
       target_date: targetDate || null,
@@ -111,7 +112,7 @@ export default function GoalsPage() {
   }
 
   async function saveEditGoal(id) {
-    if (!editName.trim()) return;
+    if (!editName.trim()) return notifyWarning("A goal needs a name.");
     await supabase.from("goals").update({
       name: editName,
       target_date: editTargetDate || null,
@@ -152,7 +153,7 @@ export default function GoalsPage() {
 
   async function addTaskToGoal(e, goalId) {
     e.preventDefault();
-    if (!newTask.name.trim()) return;
+    if (!newTask.name.trim()) return notifyWarning("Give the task a name first.");
     await supabase.from("tasks").insert({
       ...taskFieldsFromForm(newTask),
       category: "Goal-Related",
@@ -174,20 +175,14 @@ export default function GoalsPage() {
   }
 
   async function saveEditTask(id) {
-    if (!editTaskForm.name.trim()) return;
+    if (!editTaskForm.name.trim()) return notifyWarning("A task needs a name. Type one, or delete the task instead.");
     await supabase.from("tasks").update(taskFieldsFromForm(editTaskForm)).eq("id", id);
     setEditingTaskId(null);
     loadData();
   }
 
   async function toggleDone(task) {
-    const newStatus = task.status === "Done" ? "To Do" : "Done";
-    await supabase.from("tasks").update({ status: newStatus }).eq("id", task.id);
-    if (newStatus === "Done" && task.recurring) {
-      await supabase.from("tasks").insert({ ...nextOccurrence(task, toISODateLocal, parseLocalDate), user_id: user.id });
-    }
-    const tasksAfter = tasks.map((t) => (t.id === task.id ? { ...t, status: newStatus } : t));
-    await syncGoalStatuses([task.goal_id], goals, tasksAfter);
+    await toggleTaskDone(task, { tasks, goals, userId: user.id });
     loadData();
   }
 

@@ -4,6 +4,17 @@ import { usePathname } from "next/navigation";
 import ThemeToggle from "./ThemeToggle";
 import { useAuth } from "../../lib/AuthProvider";
 
+const NAV_LINKS = [
+  { href: "/", label: "Today" },
+  { href: "/tasks", label: "Tasks" },
+  { href: "/goals", label: "Goals" },
+  { href: "/review", label: "Review" },
+];
+
+function isActive(pathname, href) {
+  return href === "/" ? pathname === "/" : pathname.startsWith(href);
+}
+
 export default function NavBar() {
   const pathname = usePathname();
   const { user, signOut } = useAuth();
@@ -21,8 +32,11 @@ export default function NavBar() {
       </a>
       <div className="row" style={{ gap: 4 }}>
         <div className="navlinks">
-          <a href="/" className={pathname === "/" ? "active" : ""}>Tasks</a>
-          <a href="/goals" className={`goals-link ${pathname === "/goals" ? "active" : ""}`}>Goals</a>
+          {NAV_LINKS.map(({ href, label }) => (
+            <a key={href} href={href} className={isActive(pathname, href) ? "active" : ""}>
+              {label}
+            </a>
+          ))}
         </div>
         <ThemeToggle />
         {user && (

@@ -26,7 +26,8 @@ created_at
 effort (Small/Medium/Large), status (To Do/Done), due_date, start_date,
 context (@home/@errand/@computer/@calls — column exists, no UI yet),
 recurring (boolean), recurrence_unit, recurrence_interval, position, user_id,
-created_at
+completed_at (set when checked off), focus_date (day it was a top-3 focus
+task), created_at
 
 Key relationship: a task can optionally link to one goal via `goal_id`.
 General Life tasks leave `goal_id` empty; Goal-Related tasks should have one.
@@ -37,7 +38,26 @@ and writes to `auth.uid() = user_id`, and every insert in the app sets
 
 ## What's built so far
 
-**Tasks page** (`app/page.js`)
+**Today page** (`app/page.js`, the home screen). Deliberately minimal: it
+answers "what matters today?" and leaves adding/planning to Tasks.
+- Greeting, date, one summary line (due today / overdue)
+- Today's focus: star up to 3 tasks (`tasks.focus_date` = today)
+- One "Today" list: overdue (oldest first, hover for Today / Tomorrow)
+  then due today
+
+**Review page** (`app/review/page.js`)
+- Week / Month / Year switch (remembered) with ‹ › to step back in time;
+  periods and buckets come from `getPeriod` / `periodReport` in `lib/insights.js`
+- One summary strip: tasks completed (vs the previous period), goals
+  finished, best day (best month in Year view)
+- "Tasks completed" column chart: per day (week, month) or per month (year)
+- Goals card (finished-in-period first, then active by progress, with
+  attention flags from `goalsNeedingAttention` in `lib/insights.js`: past
+  target date, no next step, no progress in 7+ days, or ready to finish) beside a Finished card grouped like the chart
+- "Needs a decision" (overdue tasks with Today / Tomorrow / Next week /
+  No date) shows only for the current period
+
+**Tasks page** (`app/tasks/page.js`)
 - Add task form: name, category, goal picker (when Goal-Related), priority,
   effort, due date, recurring toggle (daily/weekly/monthly presets or custom
   N-day interval)
@@ -90,7 +110,9 @@ Clean, modern, calm — closer to Things/Todoist than a form-based admin tool.
   light borders; translucent sticky nav; light and dark themes
 - Tasks page: a one-line quick-add bar (options expand while typing or via
   "Options"); the list is grouped into Overdue / Today / Upcoming / No date,
-  with a collapsible Completed section
+  with a collapsible Completed section: newest first, grouped Today /
+  Yesterday / Earlier this week / Older (`groupCompleted`), 10 at a time
+  with "Show more", and a link to Review for longer history
 - Task rows show a small details line (friendly dates like "Tomorrow" /
   "Oct 19", goal, priority flag, effort, repeat); drag handles and
   edit/delete appear on hover

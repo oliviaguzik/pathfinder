@@ -17,9 +17,18 @@ function dueState(task) {
 
 // The small details line under a task name: due date, goal, priority, effort,
 // recurrence. `compact` shows just the due date and icon-only priority/recurrence;
-// `showDue={false}` hides the date where it's already obvious (calendar days).
-export default function TaskMeta({ task, goalName, compact = false, showDue = true }) {
+// `showDue={false}` hides the date where it's already obvious (calendar days);
+// `doneOn` (YYYY-MM-DD) adds "Done Sep 20" for older completed tasks.
+export default function TaskMeta({ task, goalName, compact = false, showDue = true, doneOn }) {
   const items = [];
+
+  if (doneOn) {
+    items.push(
+      <span key="done" className="meta-item" title={`Completed ${doneOn}`}>
+        Done {friendlyDate(doneOn)}
+      </span>
+    );
+  }
 
   if (showDue && task.due_date) {
     const state = dueState(task);

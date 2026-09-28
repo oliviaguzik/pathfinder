@@ -45,7 +45,9 @@ Import the GitHub repo in Vercel and add `NEXT_PUBLIC_SUPABASE_URL` and
   ordering, goal status, task form)
 
 ## Project layout
-- `app/page.js`: Tasks page (list and calendar views)
+- `app/page.js`: Today (home screen: focus, overdue, due today, goal nudges)
+- `app/tasks/page.js`: Tasks page (list and calendar views)
+- `app/review/page.js`: weekly Review (stats, chart, overdue decisions, goal check-in)
 - `app/goals/page.js`: Goals page (grid and list views)
 - `app/components/`: shared UI (`TaskFields` is the add/edit task form used
   on both pages, plus `Select`, `Modal`, `Popover`, and more)

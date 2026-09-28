@@ -3,6 +3,7 @@
 import { AuthProvider, useAuth } from "../../lib/AuthProvider";
 import NavBar from "./NavBar";
 import LoginScreen from "./LoginScreen";
+import ErrorToast from "./ErrorToast";
 
 function Gate({ children }) {
   const { user, loading } = useAuth();
@@ -19,6 +20,7 @@ function Gate({ children }) {
     <>
       <NavBar />
       <main className="container">{children}</main>
+      <ErrorToast />
     </>
   );
 }

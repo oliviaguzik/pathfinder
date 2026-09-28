@@ -28,6 +28,7 @@
   --space-4: 16px;
   --space-5: 24px;
   --control-height: 38px;
+  --chart-bar: #5b5bd6;
 }
 
 :root[data-theme="dark"] {
@@ -50,6 +51,7 @@
   --text-inverse: #ffffff;
   --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
   --shadow-md: 0 6px 24px rgba(0, 0, 0, 0.4);
+  --chart-bar: #7373ee;
 }
 
 body {
@@ -351,6 +353,31 @@ h1 { font-size: 28px; font-weight: 750; margin: 0 0 4px; letter-spacing: -0.025e
 .task-group-toggle:hover { background: var(--surface-sunken); color: var(--text); transform: none; }
 .task-group-chevron { display: inline-flex; transition: transform 0.15s; }
 .task-group-chevron.open { transform: rotate(90deg); }
+
+/* Completed section: small "Today / Yesterday / …" labels and a footer */
+.completed-subhead {
+  padding: 10px 10px 2px 35px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted);
+}
+.completed-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 10px 2px 29px;
+}
+.completed-review-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  margin-left: auto;
+  font-size: 12.5px;
+  color: var(--muted);
+  text-decoration: none;
+}
+.completed-review-link:hover { color: var(--accent); }
 
 /* Quick add */
 .quick-add {
@@ -1327,4 +1354,272 @@ button.finish-goal-btn {
 @keyframes celebration-fade-out {
   0% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
   100% { transform: translate(-50%, -50%) scale(0.92); opacity: 0; }
+}
+
+/* ---------- Shared bits for Today & Review ---------- */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+button.small-btn { padding: 4px 9px; font-size: 12.5px; color: var(--muted); }
+button.small-btn:hover { color: var(--accent); }
+
+.today-section { padding: 16px 18px; }
+.today-section-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 6px;
+  font-size: 14px;
+  font-weight: 650;
+  letter-spacing: -0.005em;
+}
+.today-section-title.overdue { color: var(--danger); }
+.today-focus .today-section-title svg { color: var(--accent); }
+.today-hint { margin: 2px 0 6px; font-size: 13px; color: var(--muted); }
+.today-win { margin: 10px 0 0; font-size: 13px; font-weight: 500; color: var(--success); }
+
+.today-row { padding: 10px 2px; }
+.today-row:hover { background: transparent; }
+.today-row-actions { display: flex; align-items: center; gap: 2px; margin-left: auto; flex-shrink: 0; }
+@media (hover: hover) {
+  .today-row .today-row-actions:not(.always) .small-btn,
+  .today-row .focus-btn:not(.on) { opacity: 0; transition: opacity 0.15s; }
+  .today-row:hover .today-row-actions .small-btn,
+  .today-row:hover .focus-btn,
+  .today-row:focus-within .today-row-actions .small-btn,
+  .today-row:focus-within .focus-btn { opacity: 1; }
+}
+.focus-btn { color: var(--muted-soft); }
+.focus-btn.on { color: var(--accent); }
+.focus-btn:hover:not(:disabled) { color: var(--accent); }
+
+/* ---------- Today ---------- */
+.today-date { margin: 0 0 4px; font-size: 13px; font-weight: 500; color: var(--muted); }
+.today-focus { border-color: color-mix(in srgb, var(--accent) 30%, var(--border)); }
+
+.attention-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.attention-name { font-size: 14px; font-weight: 550; overflow-wrap: anywhere; }
+.attention-reason { font-size: 12.5px; color: var(--muted); }
+
+.done-item {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 6px 0;
+  font-size: 13.5px;
+}
+.done-item svg { color: var(--success); flex-shrink: 0; position: relative; top: 2px; }
+.done-item-goal { margin-left: auto; font-size: 12px; color: var(--muted); white-space: nowrap; }
+
+/* ---------- Review ---------- */
+.review-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px 24px;
+}
+.review-controls { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.review-period-nav { display: flex; align-items: center; gap: 2px; }
+.review-period-label { min-width: 130px; text-align: center; font-size: 14px; font-weight: 600; }
+
+.review-stack { display: flex; flex-direction: column; gap: 14px; }
+.review-stack .card { margin-bottom: 0; }
+.review-card { padding: 18px 20px; }
+.review-card-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 10px;
+  font-size: 14px;
+  font-weight: 650;
+  letter-spacing: -0.005em;
+}
+.review-card-title.overdue { color: var(--danger); }
+
+/* Summary: three stats in one card, split by hairlines */
+.summary-strip {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  padding: 0;
+}
+.summary-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 18px 20px;
+  min-width: 0;
+}
+.summary-stat + .summary-stat { border-left: 1px solid var(--border-soft); }
+.stat-label { font-size: 12.5px; font-weight: 500; color: var(--muted); }
+.stat-value { font-size: 28px; font-weight: 700; letter-spacing: -0.02em; line-height: 1.15; overflow-wrap: anywhere; }
+.stat-note { font-size: 12.5px; color: var(--muted); overflow-wrap: anywhere; }
+.stat-note.up { color: var(--success); font-weight: 500; }
+@media (max-width: 700px) {
+  .summary-strip { grid-template-columns: 1fr; }
+  .summary-stat + .summary-stat { border-left: none; border-top: 1px solid var(--border-soft); }
+}
+
+.review-columns {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+  align-items: start;
+}
+@media (max-width: 900px) {
+  .review-columns { grid-template-columns: 1fr; }
+}
+
+.review-goal {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 9px 8px;
+  margin: 0 -8px;
+  border-radius: var(--radius-sm);
+  color: var(--text);
+  text-decoration: none;
+}
+.review-goal:hover { background: var(--surface-sunken); }
+.review-goal .attention-text { flex: 1; }
+.review-goal-count {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  font-size: 17px;
+  font-weight: 650;
+  line-height: 1.1;
+  flex-shrink: 0;
+}
+.review-goal-count span { font-size: 11.5px; font-weight: 500; color: var(--muted); }
+.review-goal-count.zero { color: var(--muted-soft); }
+
+.review-day + .review-day { margin-top: 12px; }
+.review-day-label {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--muted);
+  margin: 4px 0 2px;
+}
+.review-day-label span { font-weight: 500; }
+.review-more { font-size: 12.5px; color: var(--muted); padding: 2px 0 0 22px; }
+.review-overdue-date { font-size: 12.5px; }
+
+/* Completed-over-time column chart: thin bars from one baseline, 4px rounded tops */
+.period-chart { position: relative; }
+.period-chart-empty {
+  position: absolute;
+  inset: 0 0 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0;
+  font-size: 13px;
+  color: var(--muted);
+  pointer-events: none;
+}
+.period-chart-plot { display: grid; height: 200px; }
+.period-chart-col {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 0;
+}
+.period-chart-bar-area {
+  flex: 1;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  align-items: center;
+  padding-top: 20px;
+  border-bottom: 1px solid var(--border);
+  border-radius: 4px 4px 0 0;
+}
+.period-chart-col:hover .period-chart-bar-area { background: var(--surface-sunken); }
+.period-chart-bar {
+  width: min(24px, 64%);
+  background: var(--chart-bar);
+  border-radius: 4px 4px 0 0;
+}
+.period-chart-bar.empty { background: var(--border); border-radius: 1px; }
+.period-chart-col:hover .period-chart-bar:not(.empty) { filter: brightness(1.12); }
+.period-chart-value { font-size: 12px; font-weight: 600; color: var(--text); margin-bottom: 4px; }
+.period-chart-label { height: 16px; margin-top: 8px; font-size: 12px; color: var(--muted); white-space: nowrap; }
+.period-chart-label.now { color: var(--text); font-weight: 600; }
+/* Sits beside the hovered bar (flipping sides past the middle) so it never
+   covers the card title or the bar itself. */
+.chart-tooltip {
+  position: absolute;
+  top: 24px;
+  z-index: 5;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 7px 10px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: var(--shadow-md);
+  font-size: 12px;
+  color: var(--muted);
+  white-space: nowrap;
+  pointer-events: none;
+}
+.chart-tooltip.right { left: calc(50% + 16px); }
+.chart-tooltip.left { right: calc(50% + 16px); }
+.chart-tooltip strong { color: var(--text); font-size: 14px; }
+
+/* App messages: errors (failed saves/loads, offline) and warnings */
+.app-toast {
+  position: fixed;
+  left: 50%;
+  bottom: calc(24px + env(safe-area-inset-bottom, 0px));
+  transform: translateX(-50%);
+  z-index: 500;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: max-content;
+  max-width: min(560px, calc(100vw - 32px));
+  padding: 10px 8px 10px 12px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-md);
+  font-size: 13.5px;
+  line-height: 1.4;
+  color: var(--text);
+  animation: toast-in 0.18s ease-out;
+}
+.app-toast.error { border-color: color-mix(in srgb, var(--danger) 45%, var(--border)); }
+.app-toast.warning { border-color: color-mix(in srgb, var(--warning) 45%, var(--border)); }
+.app-toast-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  font-size: 12px;
+  font-weight: 800;
+  color: #fff;
+}
+.app-toast.error .app-toast-icon { background: var(--danger); }
+.app-toast.warning .app-toast-icon { background: var(--warning); }
+@keyframes toast-in {
+  from { opacity: 0; transform: translate(-50%, 8px); }
+  to { opacity: 1; transform: translate(-50%, 0); }
 }

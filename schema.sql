@@ -33,6 +33,8 @@ create table tasks (
   recurrence_unit text check (recurrence_unit in ('day', 'week', 'month')),
   recurrence_interval integer default 1 check (recurrence_interval >= 1),
   position double precision,
+  completed_at timestamp with time zone, -- set when checked off; powers Today and Review
+  focus_date date, -- the day this task was picked as one of that day's top 3
   user_id uuid not null default auth.uid() references auth.users(id) on delete cascade,
   created_at timestamp with time zone default now()
 );

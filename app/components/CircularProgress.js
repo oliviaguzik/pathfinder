@@ -20,7 +20,9 @@ export default function CircularProgress({ percent, size = 56, strokeWidth = 5 }
           strokeLinecap="round"
         />
       </svg>
-      <span className="ring-label">{clamped}%</span>
+      <span className="ring-label" style={{ fontSize: Math.round(Math.min(12, size * 0.24)) }}>
+        {clamped}%
+      </span>
     </div>
   );
 }

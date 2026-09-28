@@ -21,7 +21,9 @@ const themeInitScript = `
 
 export default function RootLayout({ children }) {
   return (
-    <html lang="en">
+    // The theme script sets data-theme before React loads, so the server HTML
+    // and the page differ on purpose.
+    <html lang="en" suppressHydrationWarning>
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
       </head>
