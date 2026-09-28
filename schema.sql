@@ -13,6 +13,7 @@ create table goals (
   notes text,
   completed_at timestamp with time zone,
   position double precision,
+  is_main boolean not null default false, -- the one goal to put first (see index below)
   user_id uuid not null default auth.uid() references auth.users(id) on delete cascade,
   created_at timestamp with time zone default now()
 );
@@ -43,6 +44,8 @@ create table tasks (
 create index goals_user_id_idx on goals (user_id);
 create index tasks_user_id_idx on tasks (user_id);
 create index tasks_goal_id_idx on tasks (goal_id);
+-- At most one main goal per person.
+create unique index goals_one_main_per_user on goals (user_id) where is_main;
 
 -- Auth is Google sign-in via Supabase Auth. Each row is owned by the signed-in
 -- user, and RLS restricts every operation to rows matching their own user_id.

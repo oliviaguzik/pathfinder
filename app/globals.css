@@ -29,6 +29,8 @@
   --space-5: 24px;
   --control-height: 38px;
   --chart-bar: #5b5bd6;
+  --gold: #d18f00;
+  --gold-soft: rgba(209, 143, 0, 0.12);
 }
 
 :root[data-theme="dark"] {
@@ -52,6 +54,8 @@
   --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
   --shadow-md: 0 6px 24px rgba(0, 0, 0, 0.4);
   --chart-bar: #7373ee;
+  --gold: #f2bd3a;
+  --gold-soft: rgba(242, 189, 58, 0.14);
 }
 
 body {
@@ -1148,6 +1152,56 @@ button.danger:hover { background: #fdf2f2; border-color: var(--danger); }
   .goal-grid { grid-template-columns: 1fr; }
 }
 
+/* Main goal: one goal marked as the priority */
+.goal-card-actions { display: flex; align-items: center; gap: 0; flex-shrink: 0; margin: -2px -6px 0 0; }
+.goal-tile-full .goal-card-actions .menu-trigger { margin: 0; }
+button.main-goal-toggle { color: var(--muted-soft); padding: 4px 6px; }
+button.main-goal-toggle:hover,
+button.main-goal-toggle.on { color: var(--gold); }
+button.main-goal-toggle:hover { background: var(--gold-soft); }
+/* Once a main goal is picked, the tip's message lives on as a caption on its card */
+.main-goal-caption {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  margin: 0 0 10px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--border-soft);
+  font-size: 12.5px;
+  line-height: 1.45;
+  color: var(--muted);
+}
+.main-goal-caption svg { flex-shrink: 0; margin-top: 2px; color: var(--gold); }
+.main-goal-caption strong { color: var(--gold); font-weight: 650; }
+.main-goal-inline {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--gold);
+}
+.goal-tile-full.is-main,
+.goal-list-row-full.is-main {
+  border-color: color-mix(in srgb, var(--gold) 55%, var(--border));
+  box-shadow: 0 0 0 3px var(--gold-soft), var(--shadow-sm);
+}
+.main-goal-tip {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  margin-top: 16px;
+  padding: 14px 16px;
+  border: 1px solid color-mix(in srgb, var(--gold) 35%, var(--border));
+  border-radius: var(--radius);
+  background: color-mix(in srgb, var(--gold) 7%, var(--surface));
+  color: var(--text);
+  font-size: 13.5px;
+  line-height: 1.5;
+}
+.main-goal-tip svg { flex-shrink: 0; margin-top: 2px; color: var(--gold); }
+.main-goal-tip p { margin: 0; }
+
 .finished-goals { margin-top: 28px; }
 .finished-goals .task-group-header { padding-left: 0; }
 .finished-goals .goal-grid, .finished-goals .goal-list { margin-top: 8px; }
@@ -1408,6 +1462,43 @@ button.small-btn:hover { color: var(--accent); }
 .attention-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 .attention-name { font-size: 14px; font-weight: 550; overflow-wrap: anywhere; }
 .attention-reason { font-size: 12.5px; color: var(--muted); }
+
+/* Main goal on Today: one slim card above the focus */
+.main-goal-card {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 18px;
+  border-color: color-mix(in srgb, var(--gold) 45%, var(--border));
+}
+.main-goal-card-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; flex: 1; }
+.main-goal-card-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--gold);
+}
+.main-goal-card-name {
+  font-size: 15px;
+  font-weight: 650;
+  color: var(--text);
+  text-decoration: none;
+  overflow-wrap: anywhere;
+}
+.main-goal-card-name:hover { text-decoration: underline; }
+.main-goal-card-next { font-size: 13px; color: var(--muted); overflow-wrap: anywhere; }
+.main-goal-card-next strong { color: var(--text); font-weight: 550; }
+.main-goal-card-action { display: inline-flex; align-items: center; gap: 5px; flex-shrink: 0; }
+.main-goal-card-infocus {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  flex-shrink: 0;
+  font-size: 12.5px;
+  color: var(--accent);
+}
 
 .done-item {
   display: flex;

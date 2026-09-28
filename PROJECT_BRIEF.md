@@ -41,6 +41,8 @@ and writes to `auth.uid() = user_id`, and every insert in the app sets
 **Today page** (`app/page.js`, the home screen). Deliberately minimal: it
 answers "what matters today?" and leaves adding/planning to Tasks.
 - Greeting, date, one summary line (due today / overdue)
+- Main goal card (only the goal marked main): progress ring, next step
+  (soonest open task), and "Add to focus" for that step
 - Today's focus: star up to 3 tasks (`tasks.focus_date` = today)
 - One "Today" list: overdue (oldest first, hover for Today / Tomorrow)
   then due today
@@ -74,6 +76,13 @@ answers "what matters today?" and leaves adding/planning to Tasks.
 - Completed tasks always sink to the bottom regardless of sort/view
 
 **Goals page** (`app/goals/page.js`)
+- One goal can be the **main goal** (`goals.is_main`, at most one per user
+  via a unique index): click the ☆ on a goal card (next to ⋯) to star it;
+  starring another moves it. Shown first with a gold star
+  (gold, so it's distinct from the indigo focus-task stars) and a gold
+  border, cleared when finished. With 2+ active goals and none marked main,
+  a short tip suggests picking one; once picked, the main goal's card
+  carries a one-line caption with the same message
 - Add/edit/delete goals (name, target date, notes); deleting a goal with
   linked tasks prompts to either unlink or cascade-delete them
 - Notes show on the goal card (grid) or in the expanded row (list)

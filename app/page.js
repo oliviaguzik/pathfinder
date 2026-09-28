@@ -5,6 +5,7 @@ import { supabase } from "../lib/supabaseClient";
 import Skeleton from "./components/Skeleton";
 import Icon from "./components/Icon";
 import TaskMeta from "./components/TaskMeta";
+import CircularProgress from "./components/CircularProgress";
 import { toggleTaskDone } from "../lib/taskActions";
 import { toISODateLocal, todayLocalISODate } from "../lib/dates";
 import { useAuth } from "../lib/AuthProvider";
@@ -60,6 +61,21 @@ export default function TodayPage() {
   const dueNow = tasks.filter((t) => t.status !== "Done" && t.due_date && t.due_date <= today);
   const todayList = dueNow.filter((t) => !focusIds.has(t.id)).sort(byUrgency);
   const overdueCount = dueNow.filter((t) => t.due_date < today).length;
+
+  // The one main goal (set on the Goals page) and its next step: the open task
+  // due soonest, or the oldest one if none have dates.
+  const mainGoal = goals.find((g) => g.is_main && !g.completed_at);
+  const mainTasks = mainGoal ? tasks.filter((t) => t.goal_id === mainGoal.id) : [];
+  const mainDone = mainTasks.filter((t) => t.status === "Done").length;
+  const mainPct = mainTasks.length ? Math.round((mainDone / mainTasks.length) * 100) : 0;
+  const nextStep = mainTasks
+    .filter((t) => t.status !== "Done")
+    .sort((a, b) => {
+      if (a.due_date && b.due_date) return a.due_date.localeCompare(b.due_date);
+      if (a.due_date) return -1;
+      if (b.due_date) return 1;
+      return (a.created_at || "").localeCompare(b.created_at || "");
+    })[0];
 
   function goalName(id) {
     return goals.find((g) => g.id === id)?.name || "";
@@ -154,6 +170,45 @@ export default function TodayPage() {
         </div>
       ) : (
         <>
+          {mainGoal && (
+            <section className="card main-goal-card">
+              <CircularProgress percent={mainPct} size={44} strokeWidth={4} />
+              <div className="main-goal-card-text">
+                <span className="main-goal-card-label">
+                  <Icon name="starFilled" size={12} />
+                  Main goal
+                </span>
+                <a className="main-goal-card-name" href="/goals">{mainGoal.name}</a>
+                <span className="main-goal-card-next">
+                  {nextStep ? (
+                    <>
+                      Next step: <strong>{nextStep.name}</strong>
+                    </>
+                  ) : mainTasks.length > 0 ? (
+                    "All tasks done. Finish it on the Goals page."
+                  ) : (
+                    "No next step yet. Add one on the Goals page."
+                  )}
+                </span>
+              </div>
+              {nextStep && !focusIds.has(nextStep.id) && (
+                <button
+                  className="ghost small-btn main-goal-card-action"
+                  onClick={() => setFocus(nextStep, true)}
+                  disabled={openFocusCount >= FOCUS_LIMIT}
+                  title={openFocusCount >= FOCUS_LIMIT ? `You already have ${FOCUS_LIMIT} focus tasks` : undefined}
+                >
+                  <Icon name="star" size={14} /> Add to focus
+                </button>
+              )}
+              {nextStep && focusIds.has(nextStep.id) && (
+                <span className="main-goal-card-infocus">
+                  <Icon name="starFilled" size={14} /> In today&apos;s focus
+                </span>
+              )}
+            </section>
+          )}
+
           <section className="card today-section today-focus">
             <h2 className="today-section-title">
               <Icon name="starFilled" size={15} />

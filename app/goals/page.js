@@ -18,6 +18,27 @@ import { EMPTY_TASK_FORM, taskFormFromTask, taskFieldsFromForm } from "../../lib
 import { useAuth } from "../../lib/AuthProvider";
 import { notifyWarning } from "../../lib/notify";
 
+// Star a goal to make it your main goal (one at a time). Gold, not the
+// indigo used for today's focus stars, so the two never blur.
+function MainGoalToggle({ isMain, onToggle }) {
+  const label = isMain ? "Main goal (click to unstar)" : "Make this your main goal";
+  return (
+    <button
+      type="button"
+      className={`ghost icon-btn main-goal-toggle ${isMain ? "on" : ""}`}
+      onClick={(e) => {
+        e.stopPropagation();
+        onToggle();
+      }}
+      aria-pressed={isMain}
+      aria-label={label}
+      title={label}
+    >
+      <Icon name={isMain ? "starFilled" : "star"} size={17} />
+    </button>
+  );
+}
+
 export default function GoalsPage() {
   const { user } = useAuth();
   const [goals, setGoals] = useState([]);
@@ -212,7 +233,8 @@ export default function GoalsPage() {
 
     await supabase
       .from("goals")
-      .update({ completed_at: new Date().toISOString(), status: "Completed" })
+      // A finished goal stops being the main goal; you pick the next one.
+      .update({ completed_at: new Date().toISOString(), status: "Completed", is_main: false })
       .eq("id", goal.id);
     setCelebration({
       key: Date.now(),
@@ -229,6 +251,16 @@ export default function GoalsPage() {
       .from("goals")
       .update({ completed_at: null, status: goalStatusFor({ ...goal, completed_at: null }, tasksFor(goal.id)) })
       .eq("id", goal.id);
+    loadData();
+  }
+
+  // Only one main goal at a time (enforced by a unique index), so clear the
+  // current one before setting the new one.
+  async function setMainGoal(goal, on) {
+    if (on) {
+      await supabase.from("goals").update({ is_main: false }).eq("is_main", true);
+    }
+    await supabase.from("goals").update({ is_main: on }).eq("id", goal.id);
     loadData();
   }
 
@@ -432,9 +464,9 @@ export default function GoalsPage() {
       <Menu
         label={`Actions for ${g.name}`}
         items={[
-          isFinished
-            ? { label: "Reopen goal", onClick: () => reopenGoal(g) }
-            : { label: "Edit goal", onClick: () => startEditGoal(g) },
+          ...(isFinished
+            ? [{ label: "Reopen goal", onClick: () => reopenGoal(g) }]
+            : [{ label: "Edit goal", onClick: () => startEditGoal(g) }]),
           { label: "Delete goal", danger: true, onClick: () => setConfirmingDeleteId(g.id) },
         ]}
       />
@@ -444,9 +476,20 @@ export default function GoalsPage() {
       <>
         {showHeader && (
           <>
+            {g.is_main && !isFinished && (
+              <p className="main-goal-caption">
+                <Icon name="starFilled" size={12} />
+                <span>
+                  <strong>Main goal</strong> · Give it your best energy. The others can wait their turn.
+                </span>
+              </p>
+            )}
             <div className="row-between" style={{ alignItems: "flex-start" }}>
               <span className="goal-tile-name">{g.name}</span>
-              {menu}
+              <div className="goal-card-actions">
+                {!isFinished && <MainGoalToggle isMain={!!g.is_main} onToggle={() => setMainGoal(g, !g.is_main)} />}
+                {menu}
+              </div>
             </div>
             {g.target_date && <div className="muted" style={{ marginTop: 2 }}>{targetLine(g)}</div>}
             <div className="goal-progress-row">
@@ -515,7 +558,9 @@ export default function GoalsPage() {
   const sortedGoals = sortByPosition(goals).sort((a, b) => {
     const aDone = !!a.completed_at;
     const bDone = !!b.completed_at;
-    return aDone === bDone ? 0 : aDone ? 1 : -1;
+    if (aDone !== bDone) return aDone ? 1 : -1;
+    // The main goal leads the active goals.
+    return Number(!!b.is_main && !bDone) - Number(!!a.is_main && !aDone);
   });
   const activeGoals = sortedGoals.filter((g) => !g.completed_at);
   const finishedGoals = sortedGoals.filter((g) => g.completed_at);
@@ -533,7 +578,7 @@ export default function GoalsPage() {
 
             return (
               <div
-                className={`card goal-tile-full ${dragOverGoalId === g.id ? "drag-over" : ""} ${celebratingGoalId === g.id ? "celebrating" : ""}`}
+                className={`card goal-tile-full ${g.is_main && !g.completed_at ? "is-main" : ""} ${dragOverGoalId === g.id ? "drag-over" : ""} ${celebratingGoalId === g.id ? "celebrating" : ""}`}
                 key={g.id}
                 onDragOver={(e) => {
                   if (!draggedGoalId) return;
@@ -582,7 +627,7 @@ export default function GoalsPage() {
 
             return (
               <div
-                className={`card goal-list-row-full ${dragOverGoalId === g.id ? "drag-over" : ""} ${celebratingGoalId === g.id ? "celebrating" : ""}`}
+                className={`card goal-list-row-full ${g.is_main && !g.completed_at ? "is-main" : ""} ${dragOverGoalId === g.id ? "drag-over" : ""} ${celebratingGoalId === g.id ? "celebrating" : ""}`}
                 key={g.id}
                 onDragOver={(e) => {
                   if (!draggedGoalId) return;
@@ -635,11 +680,19 @@ export default function GoalsPage() {
                       {pace && <span className={`badge ${pace.cls}`}>{pace.text}</span>}
                     </div>
                     <div className="row" style={{ gap: 10, flexWrap: "wrap" }}>
+                      {g.is_main && !g.completed_at && (
+                        <span className="main-goal-inline">
+                          <Icon name="starFilled" size={12} /> Main goal
+                        </span>
+                      )}
                       {g.target_date && <span className="muted">{targetLine(g)}</span>}
                       <span className="muted">{doneCount} / {goalTasks.length} tasks done</span>
                     </div>
                   </div>
                   {renderFinishButton(g, goalTasks)}
+                  {!g.completed_at && (
+                    <MainGoalToggle isMain={!!g.is_main} onToggle={() => setMainGoal(g, !g.is_main)} />
+                  )}
                   <span className="goal-list-chevron">{isOpen ? "⌄" : "›"}</span>
                 </div>
 
@@ -699,6 +752,16 @@ export default function GoalsPage() {
 
       {!loading && goals.length > 0 && activeGoals.length === 0 && (
         <p className="muted" style={{ marginTop: 16 }}>No active goals right now — add one above.</p>
+      )}
+      {activeGoals.length >= 2 && !activeGoals.some((g) => g.is_main) && (
+        <div className="main-goal-tip">
+          <Icon name="starFilled" size={16} />
+          <p>
+            <strong>Give one goal your best energy.</strong> When everything is a priority, nothing moves. Pick
+            the one goal that matters most right now, and let the others wait their turn. Tap the ☆ on a goal
+            to make it your main one.
+          </p>
+        </div>
       )}
       {renderGoalCollection(activeGoals)}
 
