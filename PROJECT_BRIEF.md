@@ -80,8 +80,9 @@ answers "what matters today?" and leaves adding/planning to Tasks.
   via a unique index): click the ☆ on a goal card (next to ⋯) to star it;
   starring another moves it. Shown first with a gold star
   (gold, so it's distinct from the indigo focus-task stars) and a gold
-  border, cleared when finished. With 2+ active goals and none marked main,
-  a short tip suggests picking one; once picked, the main goal's card
+  border, cleared when finished. Whenever there are active goals and none
+  is starred (including right after finishing the main one), a short tip
+  suggests picking one; once picked, the main goal's card
   carries a one-line caption with the same message
 - Add/edit/delete goals (name, target date, notes); deleting a goal with
   linked tasks prompts to either unlink or cascade-delete them

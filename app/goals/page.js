@@ -753,7 +753,9 @@ export default function GoalsPage() {
       {!loading && goals.length > 0 && activeGoals.length === 0 && (
         <p className="muted" style={{ marginTop: 16 }}>No active goals right now — add one above.</p>
       )}
-      {activeGoals.length >= 2 && !activeGoals.some((g) => g.is_main) && (
+      {/* Shown whenever nothing is starred, including right after the main goal is
+          finished (finishing clears is_main), so you're prompted to pick the next one. */}
+      {activeGoals.length > 0 && !activeGoals.some((g) => g.is_main) && (
         <div className="main-goal-tip">
           <Icon name="starFilled" size={16} />
           <p>
