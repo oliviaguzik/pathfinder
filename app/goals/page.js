@@ -18,6 +18,8 @@ import { EMPTY_TASK_FORM, taskFormFromTask, taskFieldsFromForm } from "../../lib
 import { useAuth } from "../../lib/AuthProvider";
 import { notifyWarning } from "../../lib/notify";
 
+const FINISHED_PAGE = 3;
+
 // Star a goal to make it your main goal (one at a time). Gold, not the
 // indigo used for today's focus stars, so the two never blur.
 function MainGoalToggle({ isMain, onToggle }) {
@@ -71,12 +73,22 @@ export default function GoalsPage() {
 
   const [celebration, setCelebration] = useState({ key: 0, message: "" });
   const [celebratingGoalId, setCelebratingGoalId] = useState(null);
-  const [showFinished, setShowFinished] = useState(false);
+  // Finished goals are shown by default; hiding them is remembered.
+  const [showFinished, setShowFinished] = useState(true);
+  const [finishedLimit, setFinishedLimit] = useState(FINISHED_PAGE);
 
   useEffect(() => {
     const stored = localStorage.getItem("goalsView");
     if (stored === "grid" || stored === "list") setView(stored);
+    if (localStorage.getItem("showFinishedGoals") === "false") setShowFinished(false);
   }, []);
+
+  function toggleFinished() {
+    setShowFinished((open) => {
+      localStorage.setItem("showFinishedGoals", String(!open));
+      return !open;
+    });
+  }
 
   function changeView(next) {
     setView(next);
@@ -563,7 +575,11 @@ export default function GoalsPage() {
     return Number(!!b.is_main && !bDone) - Number(!!a.is_main && !aDone);
   });
   const activeGoals = sortedGoals.filter((g) => !g.completed_at);
-  const finishedGoals = sortedGoals.filter((g) => g.completed_at);
+  // Most recently finished first, a few at a time.
+  const finishedGoals = sortedGoals
+    .filter((g) => g.completed_at)
+    .sort((a, b) => b.completed_at.localeCompare(a.completed_at));
+  const finishedHidden = Math.max(0, finishedGoals.length - finishedLimit);
 
   function renderGoalCollection(list) {
     if (list.length === 0) return null;
@@ -774,7 +790,7 @@ export default function GoalsPage() {
               type="button"
               className="task-group-toggle"
               aria-expanded={showFinished}
-              onClick={() => setShowFinished((v) => !v)}
+              onClick={toggleFinished}
             >
               <span className={`task-group-chevron ${showFinished ? "open" : ""}`}>
                 <Icon name="chevronRight" size={14} />
@@ -783,7 +799,28 @@ export default function GoalsPage() {
               <span className="task-group-count">{finishedGoals.length}</span>
             </button>
           </h2>
-          {showFinished && renderGoalCollection(finishedGoals)}
+          {showFinished && (
+            <>
+              {renderGoalCollection(finishedGoals.slice(0, finishedLimit))}
+              {(finishedHidden > 0 || finishedLimit > FINISHED_PAGE) && (
+                <div className="finished-goals-more">
+                  {finishedHidden > 0 ? (
+                    <button
+                      type="button"
+                      className="ghost small-btn"
+                      onClick={() => setFinishedLimit((n) => n + FINISHED_PAGE)}
+                    >
+                      Show more ({finishedHidden})
+                    </button>
+                  ) : (
+                    <button type="button" className="ghost small-btn" onClick={() => setFinishedLimit(FINISHED_PAGE)}>
+                      Show less
+                    </button>
+                  )}
+                </div>
+              )}
+            </>
+          )}
         </section>
       )}
 

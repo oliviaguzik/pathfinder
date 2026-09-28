@@ -130,8 +130,10 @@ Clean, modern, calm — closer to Things/Todoist than a form-based admin tool.
   live in a "⋯" menu. When every task is done, the badge reads "Ready to
   finish" and a "✓ Finish goal" button appears at the right end of the
   progress row (finishing stays a deliberate click)
-- Finished goals live in their own collapsible "Finished goals" section
-  below the active ones (grid and list views)
+- Finished goals live in their own "Finished goals" section below the
+  active ones (grid and list views), open by default; collapsing it is
+  remembered (localStorage `showFinishedGoals`). Shows the 3 most recently
+  finished, with "Show more" (3 at a time) and "Show less"
 - Calendar has Month, Week and Day modes (remembered like the list/calendar
   toggle); clicking a day opens a panel with that day's tasks and a quick
   add for that date; busy month cells show "+N more"

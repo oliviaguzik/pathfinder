@@ -1205,6 +1205,7 @@ button.main-goal-toggle:hover { background: var(--gold-soft); }
 .finished-goals { margin-top: 28px; }
 .finished-goals .task-group-header { padding-left: 0; }
 .finished-goals .goal-grid, .finished-goals .goal-list { margin-top: 8px; }
+.finished-goals-more { display: flex; justify-content: center; margin-top: 12px; }
 
 .goal-tile-name { font-size: 15.5px; font-weight: 650; letter-spacing: -0.01em; line-height: 1.35; padding-top: 3px; }
 .goal-progress-row { display: flex; align-items: center; gap: 12px; margin-top: 12px; }
