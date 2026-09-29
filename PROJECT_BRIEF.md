@@ -53,11 +53,28 @@ answers "what matters today?" and leaves adding/planning to Tasks.
 - One summary strip: tasks completed (vs the previous period), goals
   finished, best day (best month in Year view)
 - "Tasks completed" column chart: per day (week, month) or per month (year)
-- Goals card (finished-in-period first, then active by progress, with
-  attention flags from `goalsNeedingAttention` in `lib/insights.js`: past
-  target date, no next step, no progress in 7+ days, or ready to finish) beside a Finished card grouped like the chart
+- Goals card (top 5, then "Show more"; finished-in-period first, then
+  active by progress, with attention flags from `goalsNeedingAttention` in
+  `lib/insights.js`: past target date, no next step, no progress in 7+
+  days, or ready to finish) beside a "Finished tasks" card grouped like the
+  chart (latest 8, then "Show more"); both reset when the period changes
 - "Needs a decision" (overdue tasks with Today / Tomorrow / Next week /
   No date) shows only for the current period
+
+**Events** (`events` table, `lib/events.js`, `app/components/EventModal.js`)
+- Things that happen at a time (appointments, hangouts): title, date,
+  all-day or start/end time, location, notes. Not completed, not counted
+  in Review
+- Always visually distinct from tasks: events are solid teal blocks with a
+  clock icon (tasks are a checkbox + text). Calendar month cells list
+  events first (sharing the "+N more" limit), week columns show time,
+  title and location, and a legend (■ Events ○ Tasks) sits under the
+  calendar. Day view / day panel / Today use "Events" (clock icon, teal)
+  and "Tasks" (check icon) headings
+- Added via "+ Event" in the calendar header or "Add an event on this day"
+  in the day panel; click any event to edit or delete it
+- Today shows an "Events" card of today's events (ended ones fade) and
+  counts them in the summary line
 
 **Tasks page** (`app/tasks/page.js`)
 - Add task form: name, category, goal picker (when Goal-Related), priority,
@@ -130,6 +147,12 @@ Clean, modern, calm — closer to Things/Todoist than a form-based admin tool.
   live in a "⋯" menu. When every task is done, the badge reads "Ready to
   finish" and a "✓ Finish goal" button appears at the right end of the
   progress row (finishing stays a deliberate click)
+- Goals can be **paused** (`goals.paused_at`) from the ⋯ menu: they move
+  to a collapsed "Paused goals" section (open state remembered), show a
+  "Paused since …" badge, are read-only, can't be the main goal (pausing
+  clears the star), and stay off Today, the task goal picker, and Review's
+  goal list. "Resume goal" brings one back. With more than 5 active goals a
+  quiet line suggests pausing some
 - Finished goals live in their own "Finished goals" section below the
   active ones (grid and list views), open by default; collapsing it is
   remembered (localStorage `showFinishedGoals`). Shows the 3 most recently

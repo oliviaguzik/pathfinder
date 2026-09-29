@@ -30,6 +30,9 @@
   --control-height: 38px;
   --chart-bar: #5b5bd6;
   --gold: #d18f00;
+  --event: #0e8a86;
+  --event-soft: rgba(14, 138, 134, 0.12);
+  --event-ink: #ffffff;
   --gold-soft: rgba(209, 143, 0, 0.12);
 }
 
@@ -55,6 +58,9 @@
   --shadow-md: 0 6px 24px rgba(0, 0, 0, 0.4);
   --chart-bar: #7373ee;
   --gold: #f2bd3a;
+  --event: #4cc9c3;
+  --event-soft: rgba(76, 201, 195, 0.14);
+  --event-ink: #0b2524;
   --gold-soft: rgba(242, 189, 58, 0.14);
 }
 
@@ -545,8 +551,8 @@ h1 { font-size: 28px; font-weight: 750; margin: 0 0 4px; letter-spacing: -0.025e
 .select-option.active { background: var(--surface-sunken); }
 .select-option.selected { font-weight: 600; }
 
-select, input[type="text"], input[type="date"], input[type="number"] { height: var(--control-height); }
-select, input[type="text"], input[type="date"], input[type="number"], textarea {
+select, input[type="text"], input[type="date"], input[type="number"], input[type="time"] { height: var(--control-height); }
+select, input[type="text"], input[type="date"], input[type="number"], input[type="time"], textarea {
   padding: 8px 12px;
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
@@ -960,7 +966,7 @@ button.danger:hover { background: #fdf2f2; border-color: var(--danger); }
 }
 .upcoming-task-name:hover { text-decoration: underline; }
 .upcoming-task-name.done { text-decoration: line-through; color: var(--muted-soft); }
-.upcoming-task-info .due-date { display: block; margin-top: 2px; }
+.upcoming-task-info .due-date { display: block; margin-top: 2px; font-size: 12.5px; }
 
 .ring {
   position: relative;
@@ -1205,6 +1211,11 @@ button.main-goal-toggle:hover { background: var(--gold-soft); }
 .finished-goals { margin-top: 28px; }
 .finished-goals .task-group-header { padding-left: 0; }
 .finished-goals .goal-grid, .finished-goals .goal-list { margin-top: 8px; }
+.goals-nudge {
+  margin: 14px 0 0;
+  font-size: 13px;
+  color: var(--muted);
+}
 .finished-goals-more { display: flex; justify-content: center; margin-top: 12px; }
 
 .goal-tile-name { font-size: 15.5px; font-weight: 650; letter-spacing: -0.01em; line-height: 1.35; padding-top: 3px; }
@@ -1604,7 +1615,7 @@ button.small-btn:hover { color: var(--accent); }
   margin: 4px 0 2px;
 }
 .review-day-label span { font-weight: 500; }
-.review-more { font-size: 12.5px; color: var(--muted); padding: 2px 0 0 22px; }
+.review-more { display: flex; justify-content: center; margin-top: 8px; }
 .review-overdue-date { font-size: 12.5px; }
 
 /* Completed-over-time column chart: thin bars from one baseline, 4px rounded tops */
@@ -1715,3 +1726,92 @@ button.small-btn:hover { color: var(--accent); }
   from { opacity: 0; transform: translate(-50%, 8px); }
   to { opacity: 1; transform: translate(-50%, 0); }
 }
+
+/* ---------- Events (teal, so they never look like tasks) ---------- */
+/* Events are solid teal blocks with a clock; tasks are a checkbox and text. */
+.calendar-event {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  width: 100%;
+  min-width: 0;
+  padding: 2px 6px;
+  border: none;
+  border-radius: 5px;
+  background: var(--event);
+  color: var(--event-ink);
+  font-size: 11.5px;
+  font-weight: 500;
+  text-align: left;
+}
+.calendar-event:hover { background: var(--event); filter: brightness(1.08); }
+.calendar-event svg { flex-shrink: 0; opacity: 0.9; }
+.calendar-event-time { font-weight: 700; white-space: nowrap; flex-shrink: 0; }
+.calendar-event-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+
+.calendar-week-event {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  padding: 7px 9px;
+  border: none;
+  border-radius: 8px;
+  background: var(--event);
+  color: var(--event-ink);
+  text-align: left;
+}
+.calendar-week-event:hover { background: var(--event); filter: brightness(1.08); }
+.calendar-week-event-time { display: inline-flex; align-items: center; gap: 4px; font-size: 11.5px; font-weight: 700; }
+.calendar-week-event-title { font-size: 13px; font-weight: 550; line-height: 1.3; overflow-wrap: anywhere; }
+.calendar-week-event-location { font-size: 11.5px; opacity: 0.85; overflow-wrap: anywhere; }
+
+.event-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+  padding: 9px 10px;
+  border: none;
+  border-left: 3px solid var(--event);
+  border-radius: 8px;
+  background: var(--event-soft);
+  color: var(--text);
+  text-align: left;
+}
+.event-row + .event-row { margin-top: 6px; }
+.event-row:hover { background: color-mix(in srgb, var(--event) 20%, transparent); }
+.event-row.past { opacity: 0.55; }
+.event-row > svg { flex-shrink: 0; color: var(--event); }
+.event-row-time { flex-shrink: 0; min-width: 132px; font-size: 13px; font-weight: 600; color: var(--event); }
+.event-row-main { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.event-row-title { font-size: 14px; font-weight: 550; overflow-wrap: anywhere; }
+.event-row-location { font-size: 12.5px; color: var(--muted); overflow-wrap: anywhere; }
+@media (max-width: 480px) {
+  .event-row { flex-direction: column; gap: 2px; }
+  .event-row-time { min-width: 0; }
+}
+
+/* "Events" / "Tasks" headings wherever both can appear */
+.section-heading {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 10px 2px 6px;
+  font-size: 12.5px;
+  font-weight: 650;
+}
+.section-heading:first-child { margin-top: 4px; }
+.section-heading.events { color: var(--event); }
+.section-heading.tasks { color: var(--muted); }
+.today-section-title.events { color: var(--event); }
+.today-section-title svg { flex-shrink: 0; }
+
+.calendar-legend { display: flex; gap: 16px; margin-top: 10px; font-size: 12px; color: var(--muted); }
+.calendar-legend-item { display: inline-flex; align-items: center; gap: 6px; }
+.calendar-legend-swatch { width: 12px; height: 12px; border-radius: 3px; background: var(--event); }
+.calendar-legend-check { width: 11px; height: 11px; border-radius: 50%; border: 1.5px solid var(--muted-soft); }
+.day-panel-event-btn { display: inline-flex; align-items: center; gap: 5px; margin-top: 10px; }
+button.new-event-btn { display: inline-flex; align-items: center; gap: 4px; color: var(--event); }
+button.new-event-btn:hover { color: var(--event); background: var(--event-soft); }
+.today-schedule { padding: 16px 18px; }
+.today-schedule .today-section-title { margin-bottom: 10px; }

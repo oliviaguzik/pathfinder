@@ -13,7 +13,25 @@ const RANGES = [
   { key: "month", label: "Month" },
   { key: "year", label: "Year" },
 ];
-const FINISHED_PER_GROUP = 5;
+const GOALS_PAGE = 5;
+const TASKS_PAGE = 8;
+
+// "Show more (N)" while items are hidden, then "Show less" once all are shown.
+function MoreLess({ hidden, expanded, onMore, onLess }) {
+  if (hidden > 0) {
+    return (
+      <div className="review-more">
+        <button type="button" className="ghost small-btn" onClick={onMore}>Show more ({hidden})</button>
+      </div>
+    );
+  }
+  if (!expanded) return null;
+  return (
+    <div className="review-more">
+      <button type="button" className="ghost small-btn" onClick={onLess}>Show less</button>
+    </div>
+  );
+}
 
 function shiftDays(dateStr, days) {
   const d = parseLocalDate(dateStr);
@@ -104,6 +122,14 @@ export default function ReviewPage() {
   const [loading, setLoading] = useState(true);
   const [range, setRange] = useState("week");
   const [anchor, setAnchor] = useState(() => new Date());
+  const [goalLimit, setGoalLimit] = useState(GOALS_PAGE);
+  const [taskLimit, setTaskLimit] = useState(TASKS_PAGE);
+
+  // Back to the short lists whenever the period changes.
+  useEffect(() => {
+    setGoalLimit(GOALS_PAGE);
+    setTaskLimit(TASKS_PAGE);
+  }, [range, anchor]);
 
   async function loadData() {
     const [{ data: taskData }, { data: goalData }] = await Promise.all([
@@ -153,7 +179,7 @@ export default function ReviewPage() {
   // Goals: finished in this period first, then active ones by how much moved.
   const goalRows = [
     ...report.goalsFinished.map((g) => ({ goal: g, finished: true })),
-    ...goals.filter((g) => !g.completed_at).map((g) => ({ goal: g, finished: false })),
+    ...goals.filter((g) => !g.completed_at && !g.paused_at).map((g) => ({ goal: g, finished: false })),
   ]
     .map((row) => ({
       ...row,
@@ -162,17 +188,23 @@ export default function ReviewPage() {
     }))
     .sort((a, b) => b.finished - a.finished || b.doneInPeriod - a.doneInPeriod);
 
-  // Finished tasks grouped like the chart (by day, or by month for a year), newest first.
+  // Finished tasks grouped like the chart (by day, or by month for a year),
+  // newest first, showing the first `taskLimit` across all groups.
+  let taskBudget = taskLimit;
   const finishedGroups = [...report.perBucket]
     .reverse()
     .filter((b) => b.count > 0)
-    .map((b) => ({
-      bucket: b,
-      tasks: report.completed.filter((t) => {
+    .map((b) => {
+      const all = report.completed.filter((t) => {
         const d = new Date(t.completed_at);
         return d >= b.start && d < b.end;
-      }),
-    }));
+      });
+      const shown = all.slice(0, Math.max(0, taskBudget));
+      taskBudget -= shown.length;
+      return { bucket: b, total: all.length, tasks: shown };
+    })
+    .filter((g) => g.tasks.length > 0);
+  const tasksHidden = Math.max(0, report.completed.length - taskLimit);
 
   const bestLabel =
     best.count === 0
@@ -246,7 +278,7 @@ export default function ReviewPage() {
               <span className="stat-note">
                 {report.goalsFinished.length > 0
                   ? report.goalsFinished.map((g) => g.name).join(", ")
-                  : `${goals.filter((g) => !g.completed_at).length} in progress`}
+                  : `${goals.filter((g) => !g.completed_at && !g.paused_at).length} in progress`}
               </span>
             </div>
             <div className="summary-stat">
@@ -268,7 +300,7 @@ export default function ReviewPage() {
                 <span className="task-group-count">{goalRows.length}</span>
               </h2>
               {goalRows.length === 0 && <p className="today-hint">No goals yet. Set one on the Goals page.</p>}
-              {goalRows.map(({ goal, finished, doneInPeriod, goalTasks }) => {
+              {goalRows.slice(0, goalLimit).map(({ goal, finished, doneInPeriod, goalTasks }) => {
                 const doneCount = goalTasks.filter((t) => t.status === "Done").length;
                 const pct = goalTasks.length ? Math.round((doneCount / goalTasks.length) * 100) : 0;
                 const flag = !finished && flags[goal.id];
@@ -292,34 +324,43 @@ export default function ReviewPage() {
                   </a>
                 );
               })}
+              <MoreLess
+                hidden={Math.max(0, goalRows.length - goalLimit)}
+                expanded={goalLimit > GOALS_PAGE}
+                onMore={() => setGoalLimit((n) => n + GOALS_PAGE)}
+                onLess={() => setGoalLimit(GOALS_PAGE)}
+              />
             </section>
 
             <section className="card review-card">
               <h2 className="review-card-title">
-                Finished
+                Finished tasks
                 <span className="task-group-count">{report.completed.length}</span>
               </h2>
               {finishedGroups.length === 0 && (
                 <p className="today-hint">Nothing yet. Tasks you check off are counted here.</p>
               )}
-              {finishedGroups.map(({ bucket, tasks: groupTasks }) => (
+              {finishedGroups.map(({ bucket, total, tasks: groupTasks }) => (
                 <div className="review-day" key={bucket.start.toISOString()}>
                   <div className="review-day-label">
                     {bucket.longLabel}
-                    <span>{groupTasks.length}</span>
+                    <span>{total}</span>
                   </div>
-                  {groupTasks.slice(0, FINISHED_PER_GROUP).map((t) => (
+                  {groupTasks.map((t) => (
                     <div className="done-item" key={t.id}>
                       <Icon name="check" size={14} />
                       <span>{t.name}</span>
                       {t.goal_id && <span className="done-item-goal">{goalName(t.goal_id)}</span>}
                     </div>
                   ))}
-                  {groupTasks.length > FINISHED_PER_GROUP && (
-                    <div className="review-more">+{groupTasks.length - FINISHED_PER_GROUP} more</div>
-                  )}
                 </div>
               ))}
+              <MoreLess
+                hidden={tasksHidden}
+                expanded={taskLimit > TASKS_PAGE}
+                onMore={() => setTaskLimit((n) => n + TASKS_PAGE)}
+                onLess={() => setTaskLimit(TASKS_PAGE)}
+              />
             </section>
           </div>
 

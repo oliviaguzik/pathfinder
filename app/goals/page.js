@@ -19,6 +19,8 @@ import { useAuth } from "../../lib/AuthProvider";
 import { notifyWarning } from "../../lib/notify";
 
 const FINISHED_PAGE = 3;
+// More active goals than this and a gentle nudge suggests pausing some.
+const ACTIVE_GOAL_NUDGE = 5;
 
 // Star a goal to make it your main goal (one at a time). Gold, not the
 // indigo used for today's focus stars, so the two never blur.
@@ -76,12 +78,22 @@ export default function GoalsPage() {
   // Finished goals are shown by default; hiding them is remembered.
   const [showFinished, setShowFinished] = useState(true);
   const [finishedLimit, setFinishedLimit] = useState(FINISHED_PAGE);
+  // Paused goals start collapsed (they're set aside on purpose); opening is remembered.
+  const [showPaused, setShowPaused] = useState(false);
 
   useEffect(() => {
     const stored = localStorage.getItem("goalsView");
     if (stored === "grid" || stored === "list") setView(stored);
     if (localStorage.getItem("showFinishedGoals") === "false") setShowFinished(false);
+    if (localStorage.getItem("showPausedGoals") === "true") setShowPaused(true);
   }, []);
+
+  function togglePaused() {
+    setShowPaused((open) => {
+      localStorage.setItem("showPausedGoals", String(!open));
+      return !open;
+    });
+  }
 
   function toggleFinished() {
     setShowFinished((open) => {
@@ -276,6 +288,16 @@ export default function GoalsPage() {
     loadData();
   }
 
+  // Pausing sets a goal aside without finishing it; a paused goal can't be the
+  // main goal. Resuming brings it back exactly as it was.
+  async function setPaused(goal, paused) {
+    await supabase
+      .from("goals")
+      .update(paused ? { paused_at: new Date().toISOString(), is_main: false } : { paused_at: null })
+      .eq("id", goal.id);
+    loadData();
+  }
+
   function tasksFor(goalId) {
     return tasks.filter((t) => t.goal_id === goalId);
   }
@@ -306,6 +328,11 @@ export default function GoalsPage() {
     if (diffDays > 0) return `Target: ${dateStr} · ${diffDays} day${diffDays === 1 ? "" : "s"} left`;
     if (diffDays === 0) return `Target: ${dateStr} · due today`;
     return `Target: ${dateStr} · ${Math.abs(diffDays)} day${Math.abs(diffDays) === 1 ? "" : "s"} overdue`;
+  }
+
+  function pausedLabel(goal) {
+    const since = new Date(goal.paused_at).toLocaleDateString(undefined, { month: "short", day: "numeric" });
+    return { text: `Paused since ${since}`, cls: "badge-low" };
   }
 
   function paceLabel(goal, goalTasks) {
@@ -430,7 +457,7 @@ export default function GoalsPage() {
   // Finishing is deliberate: once every task is done the badge reads
   // "Ready to finish" and this button appears at the end of the progress row.
   function renderFinishButton(g, goalTasks) {
-    if (g.completed_at || !isGoalFullyDone(goalTasks)) return null;
+    if (g.completed_at || g.paused_at || !isGoalFullyDone(goalTasks)) return null;
     return (
       <button
         type="button"
@@ -472,13 +499,24 @@ export default function GoalsPage() {
 
     const addingHere = addTaskForId === g.id;
     const isFinished = !!g.completed_at;
+    const isPaused = !isFinished && !!g.paused_at;
+    // Finished and paused goals are read-only until reopened / resumed.
+    const locked = isFinished || isPaused;
     const menu = (
       <Menu
         label={`Actions for ${g.name}`}
         items={[
           ...(isFinished
             ? [{ label: "Reopen goal", onClick: () => reopenGoal(g) }]
-            : [{ label: "Edit goal", onClick: () => startEditGoal(g) }]),
+            : isPaused
+              ? [
+                  { label: "Resume goal", onClick: () => setPaused(g, false) },
+                  { label: "Edit goal", onClick: () => startEditGoal(g) },
+                ]
+              : [
+                  { label: "Edit goal", onClick: () => startEditGoal(g) },
+                  { label: "Pause goal", onClick: () => setPaused(g, true) },
+                ]),
           { label: "Delete goal", danger: true, onClick: () => setConfirmingDeleteId(g.id) },
         ]}
       />
@@ -499,7 +537,7 @@ export default function GoalsPage() {
             <div className="row-between" style={{ alignItems: "flex-start" }}>
               <span className="goal-tile-name">{g.name}</span>
               <div className="goal-card-actions">
-                {!isFinished && <MainGoalToggle isMain={!!g.is_main} onToggle={() => setMainGoal(g, !g.is_main)} />}
+                {!locked && <MainGoalToggle isMain={!!g.is_main} onToggle={() => setMainGoal(g, !g.is_main)} />}
                 {menu}
               </div>
             </div>
@@ -547,16 +585,16 @@ export default function GoalsPage() {
         <div className="tile-tasks-box">
           <div className="tile-tasks-header">
             <span>Tasks</span>
-            {!addingHere && !isFinished && (
+            {!addingHere && !locked && (
               <button className="ghost" onClick={() => toggleAddTaskFor(g.id)}>+ Add task</button>
             )}
           </div>
 
-          {addingHere && !isFinished && <div className="tile-add-task-form">{renderAddTaskForm(g.id)}</div>}
+          {addingHere && !locked && <div className="tile-add-task-form">{renderAddTaskForm(g.id)}</div>}
 
           <div className="tile-tasks-list">
             {goalTasks.length === 0 && <p className="muted">No tasks linked yet.</p>}
-            {goalTasks.map((t) => renderTaskRow(t, isFinished))}
+            {goalTasks.map((t) => renderTaskRow(t, locked))}
           </div>
         </div>
       </>
@@ -574,7 +612,8 @@ export default function GoalsPage() {
     // The main goal leads the active goals.
     return Number(!!b.is_main && !bDone) - Number(!!a.is_main && !aDone);
   });
-  const activeGoals = sortedGoals.filter((g) => !g.completed_at);
+  const activeGoals = sortedGoals.filter((g) => !g.completed_at && !g.paused_at);
+  const pausedGoals = sortedGoals.filter((g) => !g.completed_at && g.paused_at);
   // Most recently finished first, a few at a time.
   const finishedGoals = sortedGoals
     .filter((g) => g.completed_at)
@@ -590,7 +629,7 @@ export default function GoalsPage() {
             const goalTasks = sortByDueDate(tasksFor(g.id));
             const doneCount = goalTasks.filter((t) => t.status === "Done").length;
             const pct = goalTasks.length > 0 ? Math.round((doneCount / goalTasks.length) * 100) : 0;
-            const pace = paceLabel(g, goalTasks);
+            const pace = g.paused_at && !g.completed_at ? pausedLabel(g) : paceLabel(g, goalTasks);
 
             return (
               <div
@@ -638,7 +677,7 @@ export default function GoalsPage() {
             const goalTasks = sortByDueDate(tasksFor(g.id));
             const doneCount = goalTasks.filter((t) => t.status === "Done").length;
             const pct = goalTasks.length > 0 ? Math.round((doneCount / goalTasks.length) * 100) : 0;
-            const pace = paceLabel(g, goalTasks);
+            const pace = g.paused_at && !g.completed_at ? pausedLabel(g) : paceLabel(g, goalTasks);
             const isOpen = listExpanded[g.id];
 
             return (
@@ -706,7 +745,7 @@ export default function GoalsPage() {
                     </div>
                   </div>
                   {renderFinishButton(g, goalTasks)}
-                  {!g.completed_at && (
+                  {!g.completed_at && !g.paused_at && (
                     <MainGoalToggle isMain={!!g.is_main} onToggle={() => setMainGoal(g, !g.is_main)} />
                   )}
                   <span className="goal-list-chevron">{isOpen ? "⌄" : "›"}</span>
@@ -781,7 +820,28 @@ export default function GoalsPage() {
           </p>
         </div>
       )}
+      {activeGoals.length > ACTIVE_GOAL_NUDGE && (
+        <p className="goals-nudge">
+          You have {activeGoals.length} active goals. Pausing a few can help the rest move. Use <em>Pause goal</em>{" "}
+          in a goal&apos;s ⋯ menu.
+        </p>
+      )}
       {renderGoalCollection(activeGoals)}
+
+      {pausedGoals.length > 0 && (
+        <section className="finished-goals">
+          <h2 className="task-group-header">
+            <button type="button" className="task-group-toggle" aria-expanded={showPaused} onClick={togglePaused}>
+              <span className={`task-group-chevron ${showPaused ? "open" : ""}`}>
+                <Icon name="chevronRight" size={14} />
+              </span>
+              Paused goals
+              <span className="task-group-count">{pausedGoals.length}</span>
+            </button>
+          </h2>
+          {showPaused && renderGoalCollection(pausedGoals)}
+        </section>
+      )}
 
       {finishedGoals.length > 0 && (
         <section className="finished-goals">

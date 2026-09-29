@@ -6,6 +6,8 @@ import Skeleton from "./components/Skeleton";
 import Icon from "./components/Icon";
 import TaskMeta from "./components/TaskMeta";
 import CircularProgress from "./components/CircularProgress";
+import EventModal from "./components/EventModal";
+import { eventTimeLabel, sortEvents } from "../lib/events";
 import { toggleTaskDone } from "../lib/taskActions";
 import { toISODateLocal, todayLocalISODate } from "../lib/dates";
 import { useAuth } from "../lib/AuthProvider";
@@ -32,15 +34,19 @@ export default function TodayPage() {
   const { user } = useAuth();
   const [tasks, setTasks] = useState([]);
   const [goals, setGoals] = useState([]);
+  const [events, setEvents] = useState([]);
+  const [editingEvent, setEditingEvent] = useState(null);
   const [loading, setLoading] = useState(true);
 
   async function loadData() {
-    const [{ data: taskData }, { data: goalData }] = await Promise.all([
+    const [{ data: taskData }, { data: goalData }, { data: eventData }] = await Promise.all([
       supabase.from("tasks").select("*"),
       supabase.from("goals").select("*"),
+      supabase.from("events").select("*").eq("date", todayLocalISODate()),
     ]);
     setTasks(taskData || []);
     setGoals(goalData || []);
+    setEvents(sortEvents(eventData || []));
     setLoading(false);
   }
 
@@ -58,13 +64,17 @@ export default function TodayPage() {
     .sort((a, b) => (a.status === "Done") - (b.status === "Done"));
   const focusIds = new Set(focus.map((t) => t.id));
   const openFocusCount = focus.filter((t) => t.status !== "Done").length;
-  const dueNow = tasks.filter((t) => t.status !== "Done" && t.due_date && t.due_date <= today);
+  // Tasks belonging to a paused goal stay off Today until the goal is resumed.
+  const pausedGoalIds = new Set(goals.filter((g) => g.paused_at && !g.completed_at).map((g) => g.id));
+  const dueNow = tasks.filter(
+    (t) => t.status !== "Done" && t.due_date && t.due_date <= today && !pausedGoalIds.has(t.goal_id)
+  );
   const todayList = dueNow.filter((t) => !focusIds.has(t.id)).sort(byUrgency);
   const overdueCount = dueNow.filter((t) => t.due_date < today).length;
 
   // The one main goal (set on the Goals page) and its next step: the open task
   // due soonest, or the oldest one if none have dates.
-  const mainGoal = goals.find((g) => g.is_main && !g.completed_at);
+  const mainGoal = goals.find((g) => g.is_main && !g.completed_at && !g.paused_at);
   const mainTasks = mainGoal ? tasks.filter((t) => t.goal_id === mainGoal.id) : [];
   const mainDone = mainTasks.filter((t) => t.status === "Done").length;
   const mainPct = mainTasks.length ? Math.round((mainDone / mainTasks.length) * 100) : 0;
@@ -147,11 +157,16 @@ export default function TodayPage() {
     );
   }
 
+  // Timed events that have already ended fade out.
+  const nowTime = `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
+  const isPast = (ev) => !ev.all_day && (ev.end_time || ev.start_time || "").slice(0, 5) <= nowTime;
+
   const dueTodayCount = dueNow.length - overdueCount;
   const summary =
     dueNow.length === 0
       ? ["Nothing due today"]
       : [dueTodayCount > 0 && `${dueTodayCount} due today`, overdueCount > 0 && `${overdueCount} overdue`].filter(Boolean);
+  if (events.length > 0) summary.push(`${events.length} event${events.length === 1 ? "" : "s"}`);
 
   return (
     <div className="today-page">
@@ -170,6 +185,33 @@ export default function TodayPage() {
         </div>
       ) : (
         <>
+          {events.length > 0 && (
+            <section className="card today-schedule">
+              <h2 className="today-section-title events">
+                <Icon name="clock" size={15} />
+                Events
+                <span className="task-group-count">{events.length}</span>
+              </h2>
+              <div className="today-schedule-list">
+                {events.map((ev) => (
+                  <button
+                    type="button"
+                    key={ev.id}
+                    className={`event-row ${isPast(ev) ? "past" : ""}`}
+                    onClick={() => setEditingEvent(ev)}
+                  >
+                    <Icon name="clock" size={15} />
+                    <span className="event-row-time">{eventTimeLabel(ev)}</span>
+                    <span className="event-row-main">
+                      <span className="event-row-title">{ev.title}</span>
+                      {ev.location && <span className="event-row-location">{ev.location}</span>}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            </section>
+          )}
+
           {mainGoal && (
             <section className="card main-goal-card">
               <CircularProgress percent={mainPct} size={44} strokeWidth={4} />
@@ -236,7 +278,8 @@ export default function TodayPage() {
           {todayList.length > 0 && (
             <section className="card today-section">
               <h2 className="today-section-title">
-                Today
+                <Icon name="checkCircle" size={15} />
+                Tasks
                 <span className="task-group-count">{todayList.length}</span>
               </h2>
               {todayList.map(renderRow)}
@@ -245,6 +288,12 @@ export default function TodayPage() {
 
         </>
       )}
+      <EventModal
+        open={!!editingEvent}
+        event={editingEvent}
+        onClose={() => setEditingEvent(null)}
+        onSaved={loadData}
+      />
     </div>
   );
 }

@@ -9,6 +9,8 @@ import Skeleton from "../components/Skeleton";
 import Icon from "../components/Icon";
 import TaskFields from "../components/TaskFields";
 import TaskMeta from "../components/TaskMeta";
+import EventModal from "../components/EventModal";
+import { eventTimeLabel, formatTime, sortEvents } from "../../lib/events";
 import { toggleTaskDone } from "../../lib/taskActions";
 import { syncGoalStatuses } from "../../lib/goalCompletion";
 import { positionBetween, nextPosition, sortByPosition } from "../../lib/reorder";
@@ -117,6 +119,9 @@ export default function TasksPage() {
   const [view, setView] = useState("list");
   const [calendarDate, setCalendarDate] = useState(new Date());
   const [calendarMode, setCalendarMode] = useState("month");
+  const [events, setEvents] = useState([]);
+  // The event dialog: { event } to edit one, { date } to add one on a day.
+  const [eventDialog, setEventDialog] = useState(null);
   const [selectedDay, setSelectedDay] = useState(null);
   const [dayTaskName, setDayTaskName] = useState("");
   const calendarMainRef = useRef(null);
@@ -167,12 +172,14 @@ export default function TasksPage() {
 
   async function loadData() {
     setLoading(true);
-    const [{ data: taskData }, { data: goalData }] = await Promise.all([
+    const [{ data: taskData }, { data: goalData }, { data: eventData }] = await Promise.all([
       supabase.from("tasks").select("*").order("created_at", { ascending: false }),
       supabase.from("goals").select("*"),
+      supabase.from("events").select("*"),
     ]);
     setTasks(taskData || []);
     setGoals(goalData || []);
+    setEvents(eventData || []);
     setLoading(false);
   }
 
@@ -349,10 +356,10 @@ export default function TasksPage() {
     return goals.find((g) => g.id === id)?.name || "";
   }
 
-  // Finished goals are closed (as on the Goals page), so they aren't offered
+  // Finished and paused goals are closed (as on the Goals page), so they aren't offered
   // for new links — except a task's current goal, so editing doesn't unlink it.
   function goalOptions(currentGoalId) {
-    const open = goals.filter((g) => !g.completed_at || g.id === currentGoalId);
+    const open = goals.filter((g) => (!g.completed_at && !g.paused_at) || g.id === currentGoalId);
     return [{ value: "", label: "Select goal..." }, ...open.map((g) => ({ value: g.id, label: g.name }))];
   }
 
@@ -572,13 +579,55 @@ export default function TasksPage() {
     );
   }
 
-  // A day's tasks at full size plus an add box for that date — used by the Day
-  // view and by the panel that opens when you click a day.
+  function renderCalendarEvent(ev) {
+    return (
+      <button
+        type="button"
+        className="calendar-event"
+        key={ev.id}
+        title={`${eventTimeLabel(ev)} · ${ev.title}${ev.location ? ` · ${ev.location}` : ""}`}
+        onClick={(e) => {
+          e.stopPropagation();
+          setEventDialog({ event: ev });
+        }}
+      >
+        <Icon name="clock" size={11} />
+        {!ev.all_day && <span className="calendar-event-time">{formatTime(ev.start_time)}</span>}
+        <span className="calendar-event-title">{ev.title}</span>
+      </button>
+    );
+  }
+
+  // A day's events and tasks at full size, plus add boxes for that date — used
+  // by the Day view and by the panel that opens when you click a day.
   function renderDayTasks(dateStr) {
     const dayTasks = tasksByDate[dateStr] || [];
+    const dayEvents = eventsByDate[dateStr] || [];
     return (
       <div className="day-panel">
-        {dayTasks.length === 0 && <p className="muted">Nothing due this day.</p>}
+        {dayTasks.length === 0 && dayEvents.length === 0 && <p className="muted">Nothing on this day yet.</p>}
+        {dayEvents.length > 0 && (
+          <>
+            <div className="section-heading events">
+              <Icon name="clock" size={14} /> Events
+            </div>
+            {dayEvents.map((ev) => (
+              <button type="button" className="event-row" key={ev.id} onClick={() => setEventDialog({ event: ev })}>
+                <Icon name="clock" size={15} />
+                <span className="event-row-time">{eventTimeLabel(ev)}</span>
+                <span className="event-row-main">
+                  <span className="event-row-title">{ev.title}</span>
+                  {ev.location && <span className="event-row-location">{ev.location}</span>}
+                </span>
+              </button>
+            ))}
+          </>
+        )}
+        {dayTasks.length > 0 && (
+          <div className="section-heading tasks">
+            <Icon name="checkCircle" size={14} /> Tasks
+          </div>
+        )}
         {dayTasks.map((t) => (
           <div className="task-row" key={t.id}>
             <input
@@ -612,6 +661,9 @@ export default function TasksPage() {
           />
           <button type="submit" className="primary" disabled={!dayTaskName.trim()}>Add</button>
         </form>
+        <button type="button" className="ghost small-btn day-panel-event-btn" onClick={() => setEventDialog({ date: dateStr })}>
+          <Icon name="plus" size={13} /> Add an event on this day
+        </button>
       </div>
     );
   }
@@ -643,6 +695,11 @@ export default function TasksPage() {
     tasksByDate[key] = sortDoneLast(tasksByDate[key]);
   }
   const upcomingTasks = sortTasksList(visibleTasks.filter((t) => t.due_date), "due");
+
+  const eventsByDate = {};
+  for (const ev of sortEvents(events)) {
+    (eventsByDate[ev.date] ||= []).push(ev);
+  }
 
   return (
     <div>
@@ -876,6 +933,12 @@ export default function TasksPage() {
                 <span className="calendar-title">{calendarLabel}</span>
               </div>
               <div className="row" style={{ gap: 8 }}>
+                <button
+                  className="ghost new-event-btn"
+                  onClick={() => setEventDialog({ date: calendarMode === "day" ? calendarDayStr : toISODateLocal(new Date()) })}
+                >
+                  <Icon name="plus" size={13} /> Event
+                </button>
                 <button className="ghost" onClick={() => setCalendarDate(new Date())}>Today</button>
                 <div className="segmented" role="group" aria-label="Calendar range">
                   {["month", "week", "day"].map((mode) => (
@@ -914,7 +977,13 @@ export default function TasksPage() {
                 {grid.map(({ date, outside }) => {
                   const cellDateStr = toISODateLocal(date);
                   const dayTasks = tasksByDate[cellDateStr] || [];
-                  const hidden = dayTasks.length - MONTH_CELL_LIMIT;
+                  const dayEvents = eventsByDate[cellDateStr] || [];
+                  // Events first, then tasks; past the limit, the last slot says "+N more".
+                  const items = [
+                    ...dayEvents.map((ev) => ({ key: `e${ev.id}`, render: () => renderCalendarEvent(ev) })),
+                    ...dayTasks.map((t) => ({ key: `t${t.id}`, render: () => renderCalendarTask(t) })),
+                  ];
+                  const hidden = items.length - MONTH_CELL_LIMIT;
                   return (
                     <div
                       className={`calendar-cell ${outside ? "outside" : ""} ${isSameDay(date, today) ? "today" : ""} ${draggedTaskId ? "drop-target" : ""}`}
@@ -938,7 +1007,7 @@ export default function TasksPage() {
                         {date.getDate()}
                       </button>
                       <div className="calendar-cell-tasks">
-                        {dayTasks.slice(0, hidden > 0 ? MONTH_CELL_LIMIT - 1 : MONTH_CELL_LIMIT).map(renderCalendarTask)}
+                        {items.slice(0, hidden > 0 ? MONTH_CELL_LIMIT - 1 : MONTH_CELL_LIMIT).map((item) => item.render())}
                         {hidden > 0 && (
                           <span className="calendar-more">+{hidden + 1} more</span>
                         )}
@@ -952,6 +1021,7 @@ export default function TasksPage() {
                 {weekDays.map((date) => {
                   const cellDateStr = toISODateLocal(date);
                   const dayTasks = tasksByDate[cellDateStr] || [];
+                  const dayEvents = eventsByDate[cellDateStr] || [];
                   return (
                     <div
                       className={`calendar-week-day ${isSameDay(date, today) ? "today" : ""} ${draggedTaskId ? "drop-target" : ""}`}
@@ -971,6 +1041,20 @@ export default function TasksPage() {
                         <span className="calendar-week-date">{date.getDate()}</span>
                       </button>
                       <div className="calendar-week-tasks">
+                        {dayEvents.map((ev) => (
+                          <button
+                            type="button"
+                            className="calendar-week-event"
+                            key={ev.id}
+                            onClick={() => setEventDialog({ event: ev })}
+                          >
+                            <span className="calendar-week-event-time">
+                              <Icon name="clock" size={11} /> {eventTimeLabel(ev)}
+                            </span>
+                            <span className="calendar-week-event-title">{ev.title}</span>
+                            {ev.location && <span className="calendar-week-event-location">{ev.location}</span>}
+                          </button>
+                        ))}
                         {dayTasks.map((t) => (
                           <div
                             className={`calendar-week-task ${t.status === "Done" ? "done" : ""}`}
@@ -1009,6 +1093,14 @@ export default function TasksPage() {
                 })}
               </div>
             )}
+            <div className="calendar-legend" aria-hidden="true">
+              <span className="calendar-legend-item events">
+                <span className="calendar-legend-swatch" /> Events
+              </span>
+              <span className="calendar-legend-item tasks">
+                <span className="calendar-legend-check" /> Tasks
+              </span>
+            </div>
           </div>
 
           <div
@@ -1058,7 +1150,7 @@ export default function TasksPage() {
       )}
 
       <Modal
-        open={view === "calendar" && !!selectedDay && !editingId}
+        open={view === "calendar" && !!selectedDay && !editingId && !eventDialog}
         onClose={() => setSelectedDay(null)}
         title={
           selectedDay
@@ -1074,6 +1166,13 @@ export default function TasksPage() {
           {editingId && renderEditFields(editingId)}
         </div>
       </Modal>
+      <EventModal
+        open={!!eventDialog}
+        event={eventDialog?.event}
+        defaultDate={eventDialog?.date}
+        onClose={() => setEventDialog(null)}
+        onSaved={loadData}
+      />
     </div>
   );
 }
