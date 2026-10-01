@@ -10,7 +10,8 @@ import Icon from "../components/Icon";
 import TaskFields from "../components/TaskFields";
 import TaskMeta from "../components/TaskMeta";
 import EventModal from "../components/EventModal";
-import { eventTimeLabel, formatTime, sortEvents } from "../../lib/events";
+import EventFields from "../components/EventFields";
+import { eventFieldsFromForm, eventTimeLabel, formatTime, newEventForm, sortEvents } from "../../lib/events";
 import { toggleTaskDone } from "../../lib/taskActions";
 import { syncGoalStatuses } from "../../lib/goalCompletion";
 import { positionBetween, nextPosition, sortByPosition } from "../../lib/reorder";
@@ -129,6 +130,9 @@ export default function TasksPage() {
 
   const [newTask, setNewTask] = useState(EMPTY_TASK_FORM);
   const [optionsOpen, setOptionsOpen] = useState(false);
+  // The Add bar adds either a task or an event.
+  const [addKind, setAddKind] = useState("task");
+  const [newEvent, setNewEvent] = useState(() => newEventForm());
   const [showCompleted, setShowCompleted] = useState(false);
   const [completedLimit, setCompletedLimit] = useState(COMPLETED_PAGE);
   const [editingId, setEditingId] = useState(null);
@@ -202,8 +206,17 @@ export default function TasksPage() {
     return () => window.removeEventListener("resize", measure);
   }, [view, calendarDate, calendarMode, tasks]);
 
-  async function addTask(e) {
+  async function addFromBar(e) {
     e.preventDefault();
+    if (addKind === "event") {
+      const { fields, error } = eventFieldsFromForm(newEvent);
+      if (error) return notifyWarning(error);
+      const { error: saveError } = await supabase.from("events").insert(fields);
+      if (saveError) return;
+      setNewEvent(newEventForm());
+      loadData();
+      return;
+    }
     if (!newTask.name.trim()) return notifyWarning("Give the task a name first.");
     await supabase.from("tasks").insert({
       ...taskFieldsFromForm(newTask),
@@ -339,7 +352,8 @@ export default function TasksPage() {
     ...(completedOpen ? completedShown : []),
   ];
 
-  const quickAddExpanded = optionsOpen || newTask.name.trim() !== "";
+  const addName = addKind === "event" ? newEvent.title : newTask.name;
+  const quickAddExpanded = optionsOpen || addName.trim() !== "";
 
   const activeFilterCount = [filterCategory, filterStatus, filterPriority, filterEffort].filter(
     (v) => v !== "All"
@@ -706,18 +720,40 @@ export default function TasksPage() {
       <h1>Tasks</h1>
       <p className="page-sub">Everything on your plate, general life and goal-related alike.</p>
 
-      <form className={`quick-add ${quickAddExpanded ? "expanded" : ""}`} onSubmit={addTask}>
+      <form
+        className={`quick-add ${quickAddExpanded ? "expanded" : ""} ${addKind === "event" ? "is-event" : ""}`}
+        onSubmit={addFromBar}
+      >
         <div className="quick-add-row">
-          <span className="quick-add-icon" aria-hidden="true">
-            <Icon name="plus" size={16} />
-          </span>
+          <div className="segmented add-kind" role="group" aria-label="What to add">
+            <button
+              type="button"
+              className={addKind === "task" ? "active" : ""}
+              aria-pressed={addKind === "task"}
+              onClick={() => setAddKind("task")}
+            >
+              <Icon name="checkCircle" size={13} /> Task
+            </button>
+            <button
+              type="button"
+              className={addKind === "event" ? "active" : ""}
+              aria-pressed={addKind === "event"}
+              onClick={() => setAddKind("event")}
+            >
+              <Icon name="clock" size={13} /> Event
+            </button>
+          </div>
           <input
             className="quick-add-input"
             type="text"
-            placeholder="Add a task…"
-            aria-label="Task name"
-            value={newTask.name}
-            onChange={(e) => setNewTask((f) => ({ ...f, name: e.target.value }))}
+            placeholder={addKind === "event" ? "Add an event…" : "Add a task…"}
+            aria-label={addKind === "event" ? "Event name" : "Task name"}
+            value={addName}
+            onChange={(e) =>
+              addKind === "event"
+                ? setNewEvent((f) => ({ ...f, title: e.target.value }))
+                : setNewTask((f) => ({ ...f, name: e.target.value }))
+            }
           />
           <button
             type="button"
@@ -727,17 +763,29 @@ export default function TasksPage() {
           >
             {quickAddExpanded ? "Fewer options" : "Options"}
           </button>
-          <button type="submit" className="primary" disabled={!newTask.name.trim()}>Add</button>
+          <button type="submit" className={`primary ${addKind === "event" ? "event-primary" : ""}`} disabled={!addName.trim()}>
+            Add
+          </button>
         </div>
         {quickAddExpanded && (
           <div className="quick-add-options">
-            <TaskFields
-              form={newTask}
-              onChange={(patch) => setNewTask((f) => ({ ...f, ...patch }))}
-              idPrefix="task"
-              goalOptions={goalOptions()}
-              showName={false}
-            />
+            {addKind === "event" ? (
+              <EventFields
+                form={newEvent}
+                onChange={(patch) => setNewEvent((f) => ({ ...f, ...patch }))}
+                idPrefix="new-event"
+                showTitle={false}
+                showNotes={false}
+              />
+            ) : (
+              <TaskFields
+                form={newTask}
+                onChange={(patch) => setNewTask((f) => ({ ...f, ...patch }))}
+                idPrefix="task"
+                goalOptions={goalOptions()}
+                showName={false}
+              />
+            )}
           </div>
         )}
       </form>

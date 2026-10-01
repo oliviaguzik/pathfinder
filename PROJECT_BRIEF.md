@@ -71,10 +71,15 @@ answers "what matters today?" and leaves adding/planning to Tasks.
   title and location, and a legend (■ Events ○ Tasks) sits under the
   calendar. Day view / day panel / Today use "Events" (clock icon, teal)
   and "Tasks" (check icon) headings
-- Added via "+ Event" in the calendar header or "Add an event on this day"
-  in the day panel; click any event to edit or delete it
-- Today shows an "Events" card of today's events (ended ones fade) and
-  counts them in the summary line
+- One Add bar for everything: a Task / Event switch at its start (Task by
+  default). In Event mode the bar turns teal and its options are date,
+  all day, start/end (defaulting to the next full hour) and location
+- Shortcuts open the same event form (`EventFields`) with the date filled
+  in: the filled teal "+ Event" button in the calendar header, "Add an
+  event on this day" in the day panel, and "+ Add event" on Today. Click
+  any event to edit or delete it
+- Today always shows an "Events" card (a one-line "No events today" when
+  empty); ended events fade, and events count in the summary line
 
 **Tasks page** (`app/tasks/page.js`)
 - Add task form: name, category, goal picker (when Goal-Related), priority,

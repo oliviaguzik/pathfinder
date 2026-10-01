@@ -33,6 +33,13 @@
   --event: #0e8a86;
   --event-soft: rgba(14, 138, 134, 0.12);
   --event-ink: #ffffff;
+  /* Calendar blocks: a calm tint with a solid teal edge */
+  --event-fill: #d9f1ef;
+  --event-fill-hover: #c3e8e5;
+  --event-fill-ink: #0a524f;
+  /* Filled buttons ("+ Event", "Add event") */
+  --event-strong: #13918c;
+  --event-strong-hover: #0c7672;
   --gold-soft: rgba(209, 143, 0, 0.12);
 }
 
@@ -60,7 +67,12 @@
   --gold: #f2bd3a;
   --event: #4cc9c3;
   --event-soft: rgba(76, 201, 195, 0.14);
-  --event-ink: #0b2524;
+  --event-ink: #ffffff;
+  --event-fill: #173b3b;
+  --event-fill-hover: #1f4c4b;
+  --event-fill-ink: #a9e7e3;
+  --event-strong: #23807b;
+  --event-strong-hover: #2b948e;
   --gold-soft: rgba(242, 189, 58, 0.14);
 }
 
@@ -1728,7 +1740,8 @@ button.small-btn:hover { color: var(--accent); }
 }
 
 /* ---------- Events (teal, so they never look like tasks) ---------- */
-/* Events are solid teal blocks with a clock; tasks are a checkbox and text. */
+/* Events are teal-tinted blocks with a solid edge and a clock; tasks are a
+   checkbox and text. */
 .calendar-event {
   display: flex;
   align-items: center;
@@ -1737,14 +1750,16 @@ button.small-btn:hover { color: var(--accent); }
   min-width: 0;
   padding: 2px 6px;
   border: none;
-  border-radius: 5px;
-  background: var(--event);
-  color: var(--event-ink);
+  border-left: 3px solid var(--event);
+  border-radius: 4px;
+  background: var(--event-fill);
+  color: var(--event-fill-ink);
   font-size: 11.5px;
   font-weight: 500;
   text-align: left;
+  transition: background 0.15s, box-shadow 0.15s;
 }
-.calendar-event:hover { background: var(--event); filter: brightness(1.08); }
+.calendar-event:hover { background: var(--event-fill-hover); box-shadow: 0 1px 4px rgba(0, 0, 0, 0.12); }
 .calendar-event svg { flex-shrink: 0; opacity: 0.9; }
 .calendar-event-time { font-weight: 700; white-space: nowrap; flex-shrink: 0; }
 .calendar-event-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
@@ -1755,12 +1770,14 @@ button.small-btn:hover { color: var(--accent); }
   gap: 1px;
   padding: 7px 9px;
   border: none;
-  border-radius: 8px;
-  background: var(--event);
-  color: var(--event-ink);
+  border-left: 3px solid var(--event);
+  border-radius: 6px;
+  background: var(--event-fill);
+  color: var(--event-fill-ink);
   text-align: left;
+  transition: background 0.15s, box-shadow 0.15s;
 }
-.calendar-week-event:hover { background: var(--event); filter: brightness(1.08); }
+.calendar-week-event:hover { background: var(--event-fill-hover); box-shadow: 0 2px 8px rgba(0, 0, 0, 0.14); }
 .calendar-week-event-time { display: inline-flex; align-items: center; gap: 4px; font-size: 11.5px; font-weight: 700; }
 .calendar-week-event-title { font-size: 13px; font-weight: 550; line-height: 1.3; overflow-wrap: anywhere; }
 .calendar-week-event-location { font-size: 11.5px; opacity: 0.85; overflow-wrap: anywhere; }
@@ -1774,15 +1791,16 @@ button.small-btn:hover { color: var(--accent); }
   border: none;
   border-left: 3px solid var(--event);
   border-radius: 8px;
-  background: var(--event-soft);
+  background: var(--event-fill);
   color: var(--text);
   text-align: left;
+  transition: background 0.15s;
 }
 .event-row + .event-row { margin-top: 6px; }
-.event-row:hover { background: color-mix(in srgb, var(--event) 20%, transparent); }
+.event-row:hover { background: var(--event-fill-hover); }
 .event-row.past { opacity: 0.55; }
 .event-row > svg { flex-shrink: 0; color: var(--event); }
-.event-row-time { flex-shrink: 0; min-width: 132px; font-size: 13px; font-weight: 600; color: var(--event); }
+.event-row-time { flex-shrink: 0; min-width: 132px; font-size: 13px; font-weight: 600; color: var(--event-fill-ink); }
 .event-row-main { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
 .event-row-title { font-size: 14px; font-weight: 550; overflow-wrap: anywhere; }
 .event-row-location { font-size: 12.5px; color: var(--muted); overflow-wrap: anywhere; }
@@ -1808,10 +1826,73 @@ button.small-btn:hover { color: var(--accent); }
 
 .calendar-legend { display: flex; gap: 16px; margin-top: 10px; font-size: 12px; color: var(--muted); }
 .calendar-legend-item { display: inline-flex; align-items: center; gap: 6px; }
-.calendar-legend-swatch { width: 12px; height: 12px; border-radius: 3px; background: var(--event); }
+.calendar-legend-swatch {
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
+  border-left: 3px solid var(--event);
+  background: var(--event-fill);
+}
 .calendar-legend-check { width: 11px; height: 11px; border-radius: 50%; border: 1.5px solid var(--muted-soft); }
 .day-panel-event-btn { display: inline-flex; align-items: center; gap: 5px; margin-top: 10px; }
-button.new-event-btn { display: inline-flex; align-items: center; gap: 4px; color: var(--event); }
-button.new-event-btn:hover { color: var(--event); background: var(--event-soft); }
+/* Filled so "+ Event" stands out as the way to add an event */
+/* "+ Event": a see-through teal tint, so it stands out without shouting. */
+button.new-event-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: color-mix(in srgb, var(--event) 14%, transparent);
+  border-color: color-mix(in srgb, var(--event) 40%, transparent);
+  color: var(--event);
+  font-weight: 600;
+  transition: background 0.15s, border-color 0.15s, box-shadow 0.15s, transform 0.15s;
+}
+button.new-event-btn:hover {
+  background: color-mix(in srgb, var(--event) 26%, transparent);
+  border-color: color-mix(in srgb, var(--event) 65%, transparent);
+  color: var(--event);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px color-mix(in srgb, var(--event) 20%, transparent);
+}
+button.new-event-btn:active { transform: translateY(0); box-shadow: none; }
+
+/* The form's own "Add event" / "Save" stays solid: it's the final action. */
+button.primary.event-primary {
+  background: var(--event-strong);
+  border-color: var(--event-strong);
+  color: var(--event-ink);
+  transition: background 0.15s, box-shadow 0.15s, transform 0.15s;
+}
+button.primary.event-primary:hover:not(:disabled) {
+  background: var(--event-strong-hover);
+  border-color: var(--event-strong-hover);
+  filter: none;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px color-mix(in srgb, var(--event-strong) 35%, transparent);
+}
+button.primary.event-primary:active { transform: translateY(0); box-shadow: none; }
+button.primary.event-primary:active { transform: translateY(0); box-shadow: none; }
+.checkbox-event:checked { background: var(--event); border-color: var(--event); }
+
+/* Add bar: Task / Event switch; the bar turns teal in Event mode */
+.add-kind { flex-shrink: 0; }
+.add-kind button { display: inline-flex; align-items: center; gap: 5px; }
+.add-kind button.active { color: var(--accent); }
+.quick-add.is-event .add-kind button.active { color: var(--event); }
+.quick-add.is-event { border-color: color-mix(in srgb, var(--event) 45%, var(--border)); }
+.quick-add.is-event:focus-within {
+  border-color: color-mix(in srgb, var(--event) 60%, var(--border));
+  box-shadow: 0 0 0 4px var(--event-soft);
+}
+@media (max-width: 480px) {
+  .add-kind { order: -1; }
+}
+
+/* Today: the Events card is always there; one quiet line when empty */
+.today-schedule.empty { padding-block: 12px; }
+.today-schedule.empty .today-section-title { margin-bottom: 0; }
+.today-schedule-none { font-size: 13px; font-weight: 500; color: var(--muted); }
+button.add-event-link { margin-left: auto; display: inline-flex; align-items: center; gap: 4px; color: var(--event); }
+button.add-event-link:hover { color: var(--event); background: var(--event-soft); }
 .today-schedule { padding: 16px 18px; }
 .today-schedule .today-section-title { margin-bottom: 10px; }

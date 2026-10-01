@@ -35,7 +35,8 @@ export default function TodayPage() {
   const [tasks, setTasks] = useState([]);
   const [goals, setGoals] = useState([]);
   const [events, setEvents] = useState([]);
-  const [editingEvent, setEditingEvent] = useState(null);
+  // The event dialog: { event } to edit one, { date } to add one today.
+  const [eventDialog, setEventDialog] = useState(null);
   const [loading, setLoading] = useState(true);
 
   async function loadData() {
@@ -185,20 +186,29 @@ export default function TodayPage() {
         </div>
       ) : (
         <>
-          {events.length > 0 && (
-            <section className="card today-schedule">
-              <h2 className="today-section-title events">
-                <Icon name="clock" size={15} />
-                Events
-                <span className="task-group-count">{events.length}</span>
-              </h2>
+          {/* Always shown so events are easy to find; a quiet one-liner when empty. */}
+          <section className={`card today-schedule ${events.length === 0 ? "empty" : ""}`}>
+            <h2 className="today-section-title events">
+              <Icon name="clock" size={15} />
+              Events
+              {events.length > 0 && <span className="task-group-count">{events.length}</span>}
+              {events.length === 0 && <span className="today-schedule-none">No events today</span>}
+              <button
+                type="button"
+                className="ghost small-btn add-event-link"
+                onClick={() => setEventDialog({ date: today })}
+              >
+                <Icon name="plus" size={13} /> Add event
+              </button>
+            </h2>
+            {events.length > 0 && (
               <div className="today-schedule-list">
                 {events.map((ev) => (
                   <button
                     type="button"
                     key={ev.id}
                     className={`event-row ${isPast(ev) ? "past" : ""}`}
-                    onClick={() => setEditingEvent(ev)}
+                    onClick={() => setEventDialog({ event: ev })}
                   >
                     <Icon name="clock" size={15} />
                     <span className="event-row-time">{eventTimeLabel(ev)}</span>
@@ -209,8 +219,8 @@ export default function TodayPage() {
                   </button>
                 ))}
               </div>
-            </section>
-          )}
+            )}
+          </section>
 
           {mainGoal && (
             <section className="card main-goal-card">
@@ -289,9 +299,10 @@ export default function TodayPage() {
         </>
       )}
       <EventModal
-        open={!!editingEvent}
-        event={editingEvent}
-        onClose={() => setEditingEvent(null)}
+        open={!!eventDialog}
+        event={eventDialog?.event}
+        defaultDate={eventDialog?.date}
+        onClose={() => setEventDialog(null)}
         onSaved={loadData}
       />
     </div>

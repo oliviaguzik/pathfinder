@@ -41,18 +41,19 @@ Import the GitHub repo in Vercel and add `NEXT_PUBLIC_SUPABASE_URL` and
 ## Scripts
 - `npm run dev`: start the dev server
 - `npm run build`: production build
-- `npm test`: unit tests for the logic in `lib/` (dates, recurrence,
-  ordering, goal status, task form)
+- `npm test`: unit tests for the logic in `lib/`
 
 ## Project layout
-- `app/page.js`: Today (home screen: focus, overdue, due today, goal nudges)
-- `app/tasks/page.js`: Tasks page (list and calendar views)
-- `app/review/page.js`: weekly Review (stats, chart, overdue decisions, goal check-in)
-- `app/goals/page.js`: Goals page (grid and list views)
-- `app/components/`: shared UI (`TaskFields` is the add/edit task form used
-  on both pages, plus `Select`, `Modal`, `Popover`, and more)
-- `lib/`: logic with no UI: Supabase client, auth, dates, recurrence,
-  drag ordering, goal status/completion, task form mapping
+- `app/page.js`: Today (home screen: events, main goal, focus, tasks due)
+- `app/tasks/page.js`: Tasks page (Add bar for tasks and events; list and
+  month / week / day calendar views)
+- `app/review/page.js`: Review (week / month / year stats, chart, goal check-in)
+- `app/goals/page.js`: Goals page (main goal, paused and finished goals)
+- `app/components/`: shared UI (`TaskFields` / `EventFields` are the shared
+  add/edit forms, `EventModal`, `TaskMeta`, `Menu`, `ErrorToast`, and more)
+- `lib/`: logic with no UI: Supabase client, auth, dates, events,
+  recurrence, drag ordering, goal status, insights (review periods, goal
+  nudges), task grouping, task form mapping
 - `schema.sql`: full database setup; `migrations/`: changes for existing databases
 
 ## Troubleshooting
