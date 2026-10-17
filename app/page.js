@@ -5,8 +5,8 @@ import { supabase } from "../lib/supabaseClient";
 import Skeleton from "./components/Skeleton";
 import Icon from "./components/Icon";
 import TaskMeta from "./components/TaskMeta";
-import CircularProgress from "./components/CircularProgress";
 import EventModal from "./components/EventModal";
+import TaskEditModal from "./components/TaskEditModal";
 import { eventTimeLabel, sortEvents } from "../lib/events";
 import { toggleTaskDone } from "../lib/taskActions";
 import { toISODateLocal, todayLocalISODate } from "../lib/dates";
@@ -29,7 +29,7 @@ function byUrgency(a, b) {
 }
 
 // The home screen answers one question: what matters today? Adding and
-// planning live on the Tasks page.
+// planning live on the Plan page.
 export default function TodayPage() {
   const { user } = useAuth();
   const [tasks, setTasks] = useState([]);
@@ -37,6 +37,7 @@ export default function TodayPage() {
   const [events, setEvents] = useState([]);
   // The event dialog: { event } to edit one, { date } to add one today.
   const [eventDialog, setEventDialog] = useState(null);
+  const [editingTask, setEditingTask] = useState(null);
   const [loading, setLoading] = useState(true);
 
   async function loadData() {
@@ -88,6 +89,9 @@ export default function TodayPage() {
       return (a.created_at || "").localeCompare(b.created_at || "");
     })[0];
 
+  // The next step already shows in the Today card, so the goal line doesn't repeat it.
+  const nextStepShown = !!nextStep && (focusIds.has(nextStep.id) || todayList.some((t) => t.id === nextStep.id));
+
   function goalName(id) {
     return goals.find((g) => g.id === id)?.name || "";
   }
@@ -121,20 +125,26 @@ export default function TodayPage() {
           aria-label={`Mark "${t.name}" ${t.status === "Done" ? "not done" : "done"}`}
         />
         <div className="task-main">
-          <span className={`task-name ${t.status === "Done" ? "done" : ""}`}>{t.name}</span>
+          <span
+            className={`task-name task-name-editable ${t.status === "Done" ? "done" : ""}`}
+            onClick={() => setEditingTask(t)}
+            title="Edit task"
+          >
+            {t.name}
+          </span>
           <TaskMeta
             task={t}
             showDue={overdue}
             goalName={t.category === "Goal-Related" && t.goal_id ? goalName(t.goal_id) : ""}
           />
         </div>
+        {overdue && !inFocus && (
+          <div className="reschedule">
+            <button className="ghost small-btn" onClick={() => moveTo(t, today)}>Today</button>
+            <button className="ghost small-btn" onClick={() => moveTo(t, tomorrow)}>Tomorrow</button>
+          </div>
+        )}
         <div className="today-row-actions">
-          {overdue && !inFocus && (
-            <>
-              <button className="ghost small-btn" onClick={() => moveTo(t, today)}>Today</button>
-              <button className="ghost small-btn" onClick={() => moveTo(t, tomorrow)}>Tomorrow</button>
-            </>
-          )}
           {t.status !== "Done" && (
             <button
               className={`ghost icon-btn focus-btn ${inFocus ? "on" : ""}`}
@@ -186,66 +196,29 @@ export default function TodayPage() {
         </div>
       ) : (
         <>
-          {/* Always shown so events are easy to find; a quiet one-liner when empty. */}
-          <section className={`card today-schedule ${events.length === 0 ? "empty" : ""}`}>
-            <h2 className="today-section-title events">
-              <Icon name="clock" size={15} />
-              Events
-              {events.length > 0 && <span className="task-group-count">{events.length}</span>}
-              {events.length === 0 && <span className="today-schedule-none">No events today</span>}
-              <button
-                type="button"
-                className="ghost small-btn add-event-link"
-                onClick={() => setEventDialog({ date: today })}
-              >
-                <Icon name="plus" size={13} /> Add event
-              </button>
-            </h2>
-            {events.length > 0 && (
-              <div className="today-schedule-list">
-                {events.map((ev) => (
-                  <button
-                    type="button"
-                    key={ev.id}
-                    className={`event-row ${isPast(ev) ? "past" : ""}`}
-                    onClick={() => setEventDialog({ event: ev })}
-                  >
-                    <Icon name="clock" size={15} />
-                    <span className="event-row-time">{eventTimeLabel(ev)}</span>
-                    <span className="event-row-main">
-                      <span className="event-row-title">{ev.title}</span>
-                      {ev.location && <span className="event-row-location">{ev.location}</span>}
-                    </span>
-                  </button>
-                ))}
-              </div>
-            )}
-          </section>
-
           {mainGoal && (
-            <section className="card main-goal-card">
-              <CircularProgress percent={mainPct} size={44} strokeWidth={4} />
-              <div className="main-goal-card-text">
-                <span className="main-goal-card-label">
-                  <Icon name="starFilled" size={12} />
-                  Main goal
-                </span>
-                <a className="main-goal-card-name" href="/goals">{mainGoal.name}</a>
-                <span className="main-goal-card-next">
-                  {nextStep ? (
-                    <>
-                      Next step: <strong>{nextStep.name}</strong>
-                    </>
-                  ) : mainTasks.length > 0 ? (
-                    "All tasks done. Finish it on the Goals page."
-                  ) : (
-                    "No next step yet. Add one on the Goals page."
-                  )}
+            <section className="main-goal-line">
+              <Icon name="starFilled" size={14} />
+              <div className="main-goal-line-text">
+                <a className="main-goal-line-name" href="/goals">{mainGoal.name}</a>
+                <span className="main-goal-line-pct">{mainPct}%</span>
+                <span className="main-goal-line-next">
+                  {!nextStep
+                    ? mainTasks.length > 0
+                      ? "All tasks done. Finish it on the Goals page."
+                      : "No next step yet. Add one on the Goals page."
+                    : nextStepShown
+                      ? "Next step is on today's list"
+                      : (
+                        <>
+                          Next: <strong>{nextStep.name}</strong>
+                        </>
+                      )}
                 </span>
               </div>
               {nextStep && !focusIds.has(nextStep.id) && (
                 <button
-                  className="ghost small-btn main-goal-card-action"
+                  className="ghost small-btn main-goal-line-action"
                   onClick={() => setFocus(nextStep, true)}
                   disabled={openFocusCount >= FOCUS_LIMIT}
                   title={openFocusCount >= FOCUS_LIMIT ? `You already have ${FOCUS_LIMIT} focus tasks` : undefined}
@@ -253,51 +226,82 @@ export default function TodayPage() {
                   <Icon name="star" size={14} /> Add to focus
                 </button>
               )}
-              {nextStep && focusIds.has(nextStep.id) && (
-                <span className="main-goal-card-infocus">
-                  <Icon name="starFilled" size={14} /> In today&apos;s focus
-                </span>
-              )}
             </section>
           )}
 
-          <section className="card today-section today-focus">
-            <h2 className="today-section-title">
-              <Icon name="starFilled" size={15} />
-              Today&apos;s focus
-              {focus.length > 0 && (
-                <span className="task-group-count">
-                  {focus.length - openFocusCount} / {focus.length}
-                </span>
-              )}
-            </h2>
-            {focus.length === 0 ? (
-              <p className="today-hint">
-                {todayList.length > 0
-                  ? `Star up to ${FOCUS_LIMIT} tasks below that would make today a win.`
-                  : "Enjoy the clear day, or plan ahead in Tasks."}
-              </p>
-            ) : (
-              focus.map(renderRow)
+          {/* One card for the day: focus first, then events (by time) and due tasks. */}
+          <section className="card today-card">
+            <div className="today-card-head">
+              <h2>Today</h2>
+              <button
+                type="button"
+                className="ghost small-btn add-event-link"
+                onClick={() => setEventDialog({ date: today })}
+              >
+                <Icon name="plus" size={13} /> Event
+              </button>
+            </div>
+
+            {(focus.length > 0 || todayList.length > 0) && (
+              <div className="today-focus-block">
+                <h3 className="today-block-title">
+                  <Icon name="starFilled" size={14} />
+                  Focus
+                  {focus.length > 0 && (
+                    <span className="task-group-count">
+                      {focus.length - openFocusCount} / {focus.length}
+                    </span>
+                  )}
+                </h3>
+                {focus.length === 0 ? (
+                  <p className="today-hint">Star up to {FOCUS_LIMIT} tasks below that would make today a win.</p>
+                ) : (
+                  focus.map(renderRow)
+                )}
+                {focus.length > 0 && openFocusCount === 0 && (
+                  <p className="today-win">🎉 Focus done. Everything else today is a bonus.</p>
+                )}
+              </div>
             )}
-            {focus.length > 0 && openFocusCount === 0 && (
-              <p className="today-win">🎉 Focus done. Everything else today is a bonus.</p>
+
+            {(events.length > 0 || todayList.length > 0) && (
+              <div className="today-list">
+                {events.map((ev) => (
+                  <button
+                    type="button"
+                    key={ev.id}
+                    className={`task-row today-row list-event ${isPast(ev) ? "past" : ""}`}
+                    onClick={() => setEventDialog({ event: ev })}
+                  >
+                    <span className="list-event-icon">
+                      <Icon name="clock" size={14} />
+                    </span>
+                    <span className="task-main">
+                      <span className="task-name">{ev.title}</span>
+                      <span className="task-meta">
+                        <span className="meta-item list-event-when">{eventTimeLabel(ev)}</span>
+                        {ev.location && <span className="meta-item">{ev.location}</span>}
+                      </span>
+                    </span>
+                  </button>
+                ))}
+                {todayList.map(renderRow)}
+              </div>
+            )}
+
+            {focus.length === 0 && events.length === 0 && todayList.length === 0 && (
+              <p className="today-hint today-clear">Nothing on today. Enjoy the clear day, or look ahead in Plan.</p>
             )}
           </section>
-
-          {todayList.length > 0 && (
-            <section className="card today-section">
-              <h2 className="today-section-title">
-                <Icon name="checkCircle" size={15} />
-                Tasks
-                <span className="task-group-count">{todayList.length}</span>
-              </h2>
-              {todayList.map(renderRow)}
-            </section>
-          )}
-
         </>
       )}
+      <TaskEditModal
+        task={editingTask}
+        tasks={tasks}
+        goals={goals}
+        onClose={() => setEditingTask(null)}
+        onSaved={loadData}
+      />
       <EventModal
         open={!!eventDialog}
         event={eventDialog?.event}

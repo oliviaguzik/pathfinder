@@ -431,9 +431,12 @@ h1 { font-size: 28px; font-weight: 750; margin: 0 0 4px; letter-spacing: -0.025e
   padding: 14px 16px 16px;
   border-top: 1px solid var(--border-soft);
 }
+/* Phones: the Task/Event switch and Options on top, the text box and Add below. */
 @media (max-width: 480px) {
-  .quick-add-row { flex-wrap: wrap; }
-  .quick-add-input { flex-basis: calc(100% - 40px); }
+  .quick-add-row { flex-wrap: wrap; padding-left: 10px; }
+  .quick-add-options-btn { margin-left: auto; }
+  .quick-add input.quick-add-input { order: 2; flex: 1 1 calc(100% - 90px); }
+  .quick-add-row button[type="submit"] { order: 3; }
 }
 
 /* "⋯" menu */
@@ -698,12 +701,17 @@ button.danger:hover { background: #fdf2f2; border-color: var(--danger); }
     overflow: hidden;
   }
   .row-between > .row:last-child { flex-shrink: 0; }
+  .calendar-main.card { padding: 12px; }
+  .calendar-header > .row { flex-wrap: wrap; }
+  .calendar-header button { padding: 7px 10px; }
 }
 
 .calendar-header {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
+  gap: 8px;
   margin-bottom: 14px;
 }
 .calendar-title { font-weight: 650; font-size: 15px; margin-left: 6px; }
@@ -732,7 +740,7 @@ button.danger:hover { background: #fdf2f2; border-color: var(--danger); }
 
 .calendar-grid {
   display: grid;
-  grid-template-columns: repeat(7, 1fr);
+  grid-template-columns: repeat(7, minmax(0, 1fr));
   gap: 1px;
   background: var(--border-soft);
   border: 1px solid var(--border-soft);
@@ -798,7 +806,7 @@ button.danger:hover { background: #fdf2f2; border-color: var(--danger); }
 .calendar-cell:hover .calendar-more { color: var(--accent); }
 .calendar-task {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 4px;
   min-width: 0;
   width: 100%;
@@ -807,14 +815,19 @@ button.danger:hover { background: #fdf2f2; border-color: var(--danger); }
 .calendar-task:active { cursor: grabbing; }
 .calendar-task .checkbox { width: 14px; height: 14px; border-width: 1.25px; }
 .calendar-task .checkbox:checked::after { width: 6px; height: 3px; border-width: 1.5px; }
+/* Up to two lines, so names aren't cut to a few letters. */
 .calendar-task-name {
   font-size: 12px;
-  white-space: nowrap;
+  line-height: 1.3;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
   overflow: hidden;
-  text-overflow: ellipsis;
+  overflow-wrap: anywhere;
   min-width: 0;
   flex: 1 1 auto;
 }
+.calendar-task .checkbox { margin-top: 1px; flex-shrink: 0; }
 .calendar-task-name.done { text-decoration: line-through; color: var(--muted-soft); }
 
 /* Week view: seven tall columns with full task names */
@@ -1449,18 +1462,6 @@ button.finish-goal-btn {
 button.small-btn { padding: 4px 9px; font-size: 12.5px; color: var(--muted); }
 button.small-btn:hover { color: var(--accent); }
 
-.today-section { padding: 16px 18px; }
-.today-section-title {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin: 0 0 6px;
-  font-size: 14px;
-  font-weight: 650;
-  letter-spacing: -0.005em;
-}
-.today-section-title.overdue { color: var(--danger); }
-.today-focus .today-section-title svg { color: var(--accent); }
 .today-hint { margin: 2px 0 6px; font-size: 13px; color: var(--muted); }
 .today-win { margin: 10px 0 0; font-size: 13px; font-weight: 500; color: var(--success); }
 
@@ -1468,11 +1469,8 @@ button.small-btn:hover { color: var(--accent); }
 .today-row:hover { background: transparent; }
 .today-row-actions { display: flex; align-items: center; gap: 2px; margin-left: auto; flex-shrink: 0; }
 @media (hover: hover) {
-  .today-row .today-row-actions:not(.always) .small-btn,
   .today-row .focus-btn:not(.on) { opacity: 0; transition: opacity 0.15s; }
-  .today-row:hover .today-row-actions .small-btn,
   .today-row:hover .focus-btn,
-  .today-row:focus-within .today-row-actions .small-btn,
   .today-row:focus-within .focus-btn { opacity: 1; }
 }
 .focus-btn { color: var(--muted-soft); }
@@ -1481,48 +1479,10 @@ button.small-btn:hover { color: var(--accent); }
 
 /* ---------- Today ---------- */
 .today-date { margin: 0 0 4px; font-size: 13px; font-weight: 500; color: var(--muted); }
-.today-focus { border-color: color-mix(in srgb, var(--accent) 30%, var(--border)); }
 
 .attention-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 .attention-name { font-size: 14px; font-weight: 550; overflow-wrap: anywhere; }
 .attention-reason { font-size: 12.5px; color: var(--muted); }
-
-/* Main goal on Today: one slim card above the focus */
-.main-goal-card {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  padding: 14px 18px;
-  border-color: color-mix(in srgb, var(--gold) 45%, var(--border));
-}
-.main-goal-card-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; flex: 1; }
-.main-goal-card-label {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  font-size: 11.5px;
-  font-weight: 600;
-  color: var(--gold);
-}
-.main-goal-card-name {
-  font-size: 15px;
-  font-weight: 650;
-  color: var(--text);
-  text-decoration: none;
-  overflow-wrap: anywhere;
-}
-.main-goal-card-name:hover { text-decoration: underline; }
-.main-goal-card-next { font-size: 13px; color: var(--muted); overflow-wrap: anywhere; }
-.main-goal-card-next strong { color: var(--text); font-weight: 550; }
-.main-goal-card-action { display: inline-flex; align-items: center; gap: 5px; flex-shrink: 0; }
-.main-goal-card-infocus {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  flex-shrink: 0;
-  font-size: 12.5px;
-  color: var(--accent);
-}
 
 .done-item {
   display: flex;
@@ -1821,8 +1781,6 @@ button.small-btn:hover { color: var(--accent); }
 .section-heading:first-child { margin-top: 4px; }
 .section-heading.events { color: var(--event); }
 .section-heading.tasks { color: var(--muted); }
-.today-section-title.events { color: var(--event); }
-.today-section-title svg { flex-shrink: 0; }
 
 .calendar-legend { display: flex; gap: 16px; margin-top: 10px; font-size: 12px; color: var(--muted); }
 .calendar-legend-item { display: inline-flex; align-items: center; gap: 6px; }
@@ -1888,11 +1846,239 @@ button.primary.event-primary:active { transform: translateY(0); box-shadow: none
   .add-kind { order: -1; }
 }
 
-/* Today: the Events card is always there; one quiet line when empty */
-.today-schedule.empty { padding-block: 12px; }
-.today-schedule.empty .today-section-title { margin-bottom: 0; }
-.today-schedule-none { font-size: 13px; font-weight: 500; color: var(--muted); }
 button.add-event-link { margin-left: auto; display: inline-flex; align-items: center; gap: 4px; color: var(--event); }
 button.add-event-link:hover { color: var(--event); background: var(--event-soft); }
-.today-schedule { padding: 16px 18px; }
-.today-schedule .today-section-title { margin-bottom: 10px; }
+
+/* Events in the task list: a task-shaped row, teal, with a clock in the checkbox spot.
+   The left padding skips the drag-handle column so titles line up with tasks. */
+button.task-row.list-event {
+  width: 100%;
+  padding-left: 35px;
+  border: none;
+  border-bottom: 1px solid var(--border-soft);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  font-weight: 400;
+  text-align: left;
+  transform: none;
+}
+button.task-row.list-event:last-child { border-bottom: none; }
+button.task-row.list-event:hover { background: color-mix(in srgb, var(--event-fill) 60%, transparent); }
+.list-event-icon {
+  display: inline-grid;
+  place-content: center;
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  color: var(--event);
+}
+.list-event .task-name { font-weight: 550; }
+.list-event-when { color: var(--event-fill-ink); font-weight: 600; }
+
+/* Calendar side panel: a day-by-day agenda */
+.agenda-day + .agenda-day { margin-top: 12px; }
+.agenda-day-label {
+  margin: 0 0 4px;
+  font-size: 13px;
+  font-weight: 650;
+  color: var(--muted);
+}
+.agenda-day.overdue .agenda-day-label { color: var(--danger); }
+.agenda-day .undated-task-row { padding: 6px 0; }
+button.agenda-event {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  margin: 0;
+  padding: 7px 0;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--event-fill-ink);
+  font-size: 12.5px;
+  text-align: left;
+}
+button.agenda-event:hover { background: color-mix(in srgb, var(--event-fill) 60%, transparent); }
+button.agenda-event svg { color: var(--event); }
+button.agenda-event svg { flex-shrink: 0; }
+.agenda-event-time { flex-shrink: 0; font-weight: 700; }
+.agenda-event-title { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text); font-weight: 500; }
+
+/* ---------- Today: a slim main-goal line, then one card for the day ---------- */
+.main-goal-line {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 14px;
+  padding: 10px 14px;
+  border: 1px solid color-mix(in srgb, var(--gold) 35%, var(--border));
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--gold) 5%, var(--surface));
+}
+.main-goal-line > svg { flex-shrink: 0; color: var(--gold); }
+.main-goal-line-text { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 10px; flex: 1; min-width: 0; }
+.main-goal-line-name { font-size: 14px; font-weight: 650; color: var(--text); text-decoration: none; overflow-wrap: anywhere; }
+.main-goal-line-name:hover { text-decoration: underline; }
+.main-goal-line-pct { font-size: 12.5px; font-weight: 600; color: var(--gold); }
+.main-goal-line-next { font-size: 13px; color: var(--muted); overflow-wrap: anywhere; }
+.main-goal-line-next strong { color: var(--text); font-weight: 550; }
+.main-goal-line-action { display: inline-flex; align-items: center; gap: 5px; flex-shrink: 0; }
+
+.today-card { padding: 16px 18px; }
+.today-card-head { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+.today-card-head h2 { margin: 0; font-size: 15px; font-weight: 650; letter-spacing: -0.005em; }
+.today-focus-block { padding-bottom: 6px; }
+.today-block-title {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin: 4px 0 2px;
+  font-size: 13px;
+  font-weight: 650;
+  color: var(--accent);
+}
+.today-block-title svg { flex-shrink: 0; }
+.today-focus-block + .today-list { margin-top: 6px; padding-top: 8px; border-top: 1px solid var(--border-soft); }
+.today-clear { margin: 4px 0 2px; }
+/* Today's events: same teal row as in the task list, nudged so the clock lines up with the checkboxes. */
+.today-card button.task-row.list-event {
+  width: calc(100% + 12px);
+  margin: 0 -6px;
+  padding: 10px 8px;
+}
+.list-event.past { opacity: 0.55; }
+/* The agenda gets more of the panel than "No date". */
+.calendar-side-section:first-child { flex-grow: 3; }
+.calendar-side-section + .calendar-side-section { flex-grow: 2; }
+
+/* Side panel rows: the × shows on hover, like the list. */
+@media (hover: hover) {
+  .undated-task-row .row-delete-btn { opacity: 0; transition: opacity 0.15s; }
+  .undated-task-row:hover .row-delete-btn,
+  .undated-task-row:focus-within .row-delete-btn,
+  .undated-task-row .row-delete-btn.danger { opacity: 1; }
+}
+.task-actions .small-btn { align-self: center; }
+
+.list-note {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 6px 10px 2px 35px;
+  font-size: 12.5px;
+  color: var(--muted);
+}
+.list-note svg { color: var(--event); flex-shrink: 0; }
+
+/* "Today / Tomorrow" on overdue rows. On wide screens they sit at the end of the
+   row and appear on hover; on phones they move under the task, always shown. */
+.reschedule { display: flex; align-items: center; gap: 2px; flex-shrink: 0; margin-left: auto; }
+.reschedule + .task-actions, .reschedule + .today-row-actions { margin-left: 0; }
+@media (hover: hover) {
+  .task-row .reschedule { opacity: 0; transition: opacity 0.15s; }
+  .task-row:hover .reschedule,
+  .task-row:focus-within .reschedule { opacity: 1; }
+}
+@media (max-width: 600px) {
+  .task-row { flex-wrap: wrap; row-gap: 0; }
+  .task-row .task-main { flex: 1 1 0; }
+  .task-row .reschedule {
+    order: 3;
+    flex-basis: 100%;
+    margin: 2px 0 -4px;
+    padding-left: 22px;
+    opacity: 1;
+  }
+  .task-list-card .task-row .reschedule { padding-left: 47px; }
+  .task-row .reschedule .small-btn { padding: 4px 8px; }
+  /* Tapping a task's name edits it, so the pencil can go. */
+  .task-row .task-actions [aria-label="Edit task"] { display: none; }
+}
+
+/* Phones: a tighter top bar so every tab fits. */
+@media (max-width: 520px) {
+  .topnav { padding: 12px 14px; }
+  .topnav .brand-name { display: none; }
+  .navlinks { gap: 0; }
+  .navlinks a { padding: 6px 8px; }
+  .topnav button.ghost { padding: 6px 8px; white-space: nowrap; }
+}
+
+/* ---------- Plan list view: Scheduled (by day) beside No date ---------- */
+.plan-columns {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(300px, 400px);
+  gap: 20px;
+  align-items: start;
+  margin-top: 16px;
+}
+.plan-columns .task-list-card { margin-top: 0; padding: 14px 14px 12px; }
+@media (max-width: 900px) {
+  .plan-columns { grid-template-columns: minmax(0, 1fr); }
+}
+.plan-col-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 6px;
+  padding: 2px 10px 0;
+  font-size: 15px;
+  font-weight: 650;
+  letter-spacing: -0.005em;
+}
+.plan-empty { margin: 4px 10px 6px; font-size: 13px; color: var(--muted); }
+/* Rows breathe instead of sitting between lines. */
+.plan-columns .task-row,
+.plan-columns button.task-row.list-event { border-bottom: none; padding-top: 9px; padding-bottom: 9px; }
+.plan-columns .list-note { margin-left: 10px; }
+
+.plan-day { border-radius: var(--radius-sm); padding-bottom: 2px; transition: background 0.15s, box-shadow 0.15s; }
+.plan-day + .plan-day { margin-top: 10px; }
+.plan-day-label {
+  margin: 0;
+  padding: 8px 10px 2px 35px;
+  font-size: 13px;
+  font-weight: 650;
+  color: var(--muted);
+}
+.plan-day:first-of-type .plan-day-label { padding-top: 2px; }
+.plan-day.overdue .plan-day-label { color: var(--danger); }
+.plan-day.drag-over,
+.plan-undated.drag-over { background: var(--accent-soft); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 40%, transparent); }
+.plan-scheduled .task-group-completed { margin-top: 14px; padding-top: 6px; border-top: 1px solid var(--border-soft); }
+.plan-undated .plan-col-title { padding-left: 10px; }
+/* Phones: no drag handles (touch can't drag), so headings, checkboxes and
+   event clocks share one left edge. */
+@media (max-width: 600px) {
+  .plan-columns .drag-handle { display: none; }
+  .plan-day-label { padding-left: 10px; }
+  .plan-columns button.task-row.list-event { padding-left: 10px; }
+  .plan-columns .task-list-card .task-group-header { padding-left: 10px; }
+  .plan-columns .task-list-card .task-row .reschedule { padding-left: 30px; }
+}
+/* With a mouse, row buttons float over the end of the row on hover, so names
+   use the full width instead of leaving room for hidden buttons. */
+@media (hover: hover) and (min-width: 601px) {
+  .plan-columns .task-row { position: relative; }
+  .plan-columns .task-row .task-actions,
+  .plan-columns .task-row .reschedule {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    padding-left: 10px;
+    background: var(--surface);
+    box-shadow: -14px 0 12px var(--surface);
+  }
+  .plan-columns .task-row .task-actions { right: 6px; }
+  .plan-columns .task-row .reschedule { right: 72px; box-shadow: none; padding-left: 0; }
+  .plan-columns .task-row .reschedule ~ .task-actions { box-shadow: none; }
+  .plan-columns .task-row:hover .task-actions,
+  .plan-columns .task-row:focus-within .task-actions { background: var(--surface-sunken); box-shadow: -14px 0 12px var(--surface-sunken); }
+  .plan-columns .task-row:hover .reschedule,
+  .plan-columns .task-row:focus-within .reschedule { background: var(--surface-sunken); box-shadow: -14px 0 12px var(--surface-sunken); }
+  .plan-columns .task-row:hover .reschedule ~ .task-actions { box-shadow: none; }
+}
+
+/* Day popup / Day view: no drag handles, so events start where the checkboxes do. */
+.day-panel button.task-row.list-event { padding: 10px 2px; border-bottom: 1px solid var(--border-soft); }

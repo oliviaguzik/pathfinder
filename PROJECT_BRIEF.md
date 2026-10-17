@@ -40,12 +40,17 @@ and writes to `auth.uid() = user_id`, and every insert in the app sets
 
 **Today page** (`app/page.js`, the home screen). Deliberately minimal: it
 answers "what matters today?" and leaves adding/planning to Tasks.
-- Greeting, date, one summary line (due today / overdue)
-- Main goal card (only the goal marked main): progress ring, next step
-  (soonest open task), and "Add to focus" for that step
-- Today's focus: star up to 3 tasks (`tasks.focus_date` = today)
-- One "Today" list: overdue (oldest first, hover for Today / Tomorrow)
-  then due today
+- Greeting, date, one summary line (due today / overdue / events)
+- A slim gold main-goal line (only the goal marked main): name, % done,
+  next step (soonest open task) and "Add to focus". When that step is
+  already on the Today card it says so instead of repeating it
+- One "Today" card ("+ Event" in its header): Focus first (star up to 3
+  tasks, `tasks.focus_date` = today), then today's events by time (teal
+  rows, ended ones fade) and the due tasks: overdue (oldest first, hover
+  for Today / Tomorrow) then due today. A one-line note when the day is empty
+- Click a task's name to edit or delete it in a dialog (`TaskEditModal`,
+  which shares save/delete with the Plan page via `saveTaskEdit` /
+  `deleteTaskAndSync` in `lib/taskActions.js`)
 
 **Review page** (`app/review/page.js`)
 - Week / Month / Year switch (remembered) with ‹ › to step back in time;
@@ -78,22 +83,39 @@ answers "what matters today?" and leaves adding/planning to Tasks.
   in: the filled teal "+ Event" button in the calendar header, "Add an
   event on this day" in the day panel, and "+ Add event" on Today. Click
   any event to edit or delete it
-- Today always shows an "Events" card (a one-line "No events today" when
-  empty); ended events fade, and events count in the summary line
+- Plan list view is two columns (stacked on narrow screens). **Scheduled**:
+  Overdue, then one heading per day (Today, Tomorrow, "Mon, Oct 19") with
+  that day's events (next two weeks, `EVENT_LOOKAHEAD_DAYS`) then its open
+  tasks, from `buildAgenda`; Completed (collapsible) at the bottom.
+  **No date**: undated open tasks. No lines between rows; events are
+  task-shaped rows with a teal clock and time. Drag a task onto a day
+  heading or a task in another day to give it that date, or into No date to
+  clear it; dropping within the same day reorders. Any active filter hides
+  events, with a quiet "N events are hidden while filters are on" line
+- Calendar side panel is the same day-by-day **Scheduled** list (`buildAgenda`):
+  Overdue, then each day with something on it (Today, Tomorrow, "Mon,
+  Oct 19"), events first then open tasks; finished tasks are left out.
+  "No date" (open tasks only) sits below it with less of the height.
+  The × on side-panel rows appears on hover
+- Today shows events inside its one Today card; events count in the
+  summary line
 
-**Tasks page** (`app/tasks/page.js`)
+**Plan page** (`app/plan/page.js`, formerly Tasks; `/tasks` redirects
+here). Title "Plan", subtitle "Your tasks and events, all in one place."
 - Add task form: name, category, goal picker (when Goal-Related), priority,
   effort, due date, recurring toggle (daily/weekly/monthly presets or custom
   N-day interval)
-- Edit any existing task inline (or via modal in calendar view); delete
+- Edit any task by clicking its name: the same "Edit task" dialog
+  (`TaskEditModal`) everywhere (list, calendar, day popup, Today); delete
 - Filters: category, status, priority, effort (via a popover panel with a
   badge count and "clear all")
 - Sort: due date, priority, effort, newest, oldest, or custom drag order
 - Drag-and-drop manual reordering in list view
 - List view and calendar view (toggle persisted to localStorage). Calendar
   view supports dragging tasks onto a day to change its due date, dragging to
-  the "No due date" side panel to unschedule it, and shows overdue/due-today
-  styling
+  the "No date" part of the side panel to unschedule it, and shows
+  overdue/due-today styling. The side panel (Agenda + No date) is sized to
+  the calendar's height
 - Completing a recurring task automatically creates the next occurrence
 - Completed tasks always sink to the bottom regardless of sort/view
 
@@ -118,7 +140,7 @@ answers "what matters today?" and leaves adding/planning to Tasks.
   overrides
 - Grid view and list view (toggle persisted to localStorage); list view rows
   expand/collapse to show the task checklist
-- Inline add/edit task forms scoped to a goal (same fields as the Tasks page,
+- Inline add/edit task forms scoped to a goal (same fields as the Plan page,
   including recurrence)
 - Drag-and-drop manual reordering of goals
 
@@ -140,11 +162,15 @@ Clean, modern, calm — closer to Things/Todoist than a form-based admin tool.
   means "done" (round checkboxes, Completed badges, full progress rings)
 - Subtle tinted background with a soft glow at the top; white cards with
   light borders; translucent sticky nav; light and dark themes
-- Tasks page: a one-line quick-add bar (options expand while typing or via
-  "Options"); the list is grouped into Overdue / Today / Upcoming / No date,
-  with a collapsible Completed section: newest first, grouped Today /
+- Plan page: a one-line quick-add bar (options expand while typing or via
+  "Options"); the list is Scheduled (by day) beside No date, with a
+  collapsible Completed section: newest first, grouped Today /
   Yesterday / Earlier this week / Older (`groupCompleted`), 10 at a time
   with "Show more", and a link to Review for longer history
+- With a mouse, a row's buttons float over its right end on hover, so
+  names use the full width
+- Click a task's name to edit it (list, calendar and day panel). Overdue
+  rows get "Today" / "Tomorrow" buttons on hover, as on the Today page
 - Task rows show a small details line (friendly dates like "Tomorrow" /
   "Oct 19", goal, priority flag, effort, repeat); drag handles and
   edit/delete appear on hover
@@ -165,6 +191,12 @@ Clean, modern, calm — closer to Things/Todoist than a form-based admin tool.
 - Calendar has Month, Week and Day modes (remembered like the list/calendar
   toggle); clicking a day opens a panel with that day's tasks and a quick
   add for that date; busy month cells show "+N more"
+- Phones: overdue rows' Today / Tomorrow buttons move under the task and
+  stay visible; tapping a name edits (the pencil is hidden); the Add bar
+  puts the Task/Event switch and Options on top, text box and Add below;
+  the top bar drops the "PathFinder" word so all tabs fit; calendar
+  controls wrap so nothing scrolls sideways. Month cells show task names
+  on up to two lines
 - All pages share one page width (1360px max), so switching views or pages
   doesn't change the layout width
 - Normal-case field labels, not small uppercase

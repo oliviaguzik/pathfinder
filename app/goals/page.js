@@ -263,7 +263,7 @@ export default function GoalsPage() {
     setCelebration({
       key: Date.now(),
       message: `🎉 "${goal.name}" complete!`,
-      subtitle: `${count} task${count === 1 ? "" : "s"} done — nice work.`,
+      subtitle: `${count} task${count === 1 ? "" : "s"} done. Nice work.`,
     });
     setCelebratingGoalId(goal.id);
     setTimeout(() => setCelebratingGoalId((current) => (current === goal.id ? null : current)), 1200);
@@ -801,12 +801,12 @@ export default function GoalsPage() {
       {!loading && goals.length === 0 && (
         <div className="empty-state">
           <span className="empty-state-icon">🎯</span>
-          <span>No goals yet — add one above.</span>
+          <span>No goals yet. Add one above.</span>
         </div>
       )}
 
       {!loading && goals.length > 0 && activeGoals.length === 0 && (
-        <p className="muted" style={{ marginTop: 16 }}>No active goals right now — add one above.</p>
+        <p className="muted" style={{ marginTop: 16 }}>No active goals right now. Add one above.</p>
       )}
       {/* Shown whenever nothing is starred, including right after the main goal is
           finished (finishing clears is_main), so you're prompted to pick the next one. */}

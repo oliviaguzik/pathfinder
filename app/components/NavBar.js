@@ -6,7 +6,7 @@ import { useAuth } from "../../lib/AuthProvider";
 
 const NAV_LINKS = [
   { href: "/", label: "Today" },
-  { href: "/tasks", label: "Tasks" },
+  { href: "/plan", label: "Plan" },
   { href: "/goals", label: "Goals" },
   { href: "/review", label: "Review" },
 ];
@@ -28,7 +28,7 @@ export default function NavBar() {
             <path d="M5 5h12l-2.8 3.2L17 11.5H5" />
           </svg>
         </span>
-        PathFinder
+        <span className="brand-name">PathFinder</span>
       </a>
       <div className="row" style={{ gap: 4 }}>
         <div className="navlinks">

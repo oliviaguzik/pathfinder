@@ -45,7 +45,8 @@ Import the GitHub repo in Vercel and add `NEXT_PUBLIC_SUPABASE_URL` and
 
 ## Project layout
 - `app/page.js`: Today (home screen: events, main goal, focus, tasks due)
-- `app/tasks/page.js`: Tasks page (Add bar for tasks and events; list and
+- `app/plan/page.js`: Plan page, formerly Tasks (`app/tasks/page.js` now just
+  redirects here) (Add bar for tasks and events; list and
   month / week / day calendar views)
 - `app/review/page.js`: Review (week / month / year stats, chart, goal check-in)
 - `app/goals/page.js`: Goals page (main goal, paused and finished goals)

@@ -3,8 +3,8 @@
 import Select from "./Select";
 import { RECURRENCE_PRESET_OPTIONS } from "../../lib/recurrence";
 
-const PRIORITY_OPTIONS = [{ value: "", label: "N/A" }, "High", "Medium", "Low"];
-const EFFORT_OPTIONS = [{ value: "", label: "N/A" }, "Small", "Medium", "Large"];
+const PRIORITY_OPTIONS = [{ value: "", label: "None" }, "High", "Medium", "Low"];
+const EFFORT_OPTIONS = [{ value: "", label: "None" }, "Small", "Medium", "Large"];
 
 // The fields shared by every add/edit task form. `form` is shaped like
 // EMPTY_TASK_FORM (lib/taskForm.js); `onChange` receives the changed keys.
