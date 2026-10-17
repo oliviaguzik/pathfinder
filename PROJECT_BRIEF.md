@@ -79,6 +79,14 @@ answers "what matters today?" and leaves adding/planning to Tasks.
   title and location, and a legend (■ Events ○ Tasks) sits under the
   calendar. Day view / day panel / Today use "Events" (clock icon, teal)
   and "Tasks" (check icon) headings
+- Dates in plain words: typing "Call mom tomorrow", "Pay rent on the 1st",
+  "Taxes oct 20", "Review next friday", "in 2 weeks" or "10/30" in the Add bar
+  sets the date; in Event mode times too ("Dinner friday 7pm", "3-4pm",
+  "at noon", "at 6" = 6 PM). A line under the bar shows what was understood
+  ("Due Tomorrow from “tomorrow”") with × to keep the words in the name;
+  the words are taken out of the saved name. Changing the date in Options by
+  hand wins. "sun"/"sat" alone aren't read as days ("sun cream").
+  Parser: `parseQuickAdd` in `lib/parseQuickAdd.js` (tested)
 - One Add bar for everything: a Task / Event switch at its start (Task by
   default). In Event mode the bar turns teal and its options are date,
   all day, start/end (defaulting to the next full hour) and location

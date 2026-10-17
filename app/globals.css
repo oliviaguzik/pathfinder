@@ -2177,3 +2177,21 @@ button.due-menu-trigger[aria-expanded="true"] > svg:last-child { opacity: 1; }
   cursor: pointer;
 }
 .due-menu-pick input[type="date"]::-webkit-calendar-picker-indicator { position: absolute; inset: 0; width: 100%; height: 100%; cursor: pointer; }
+
+/* Add bar: the date (and time) read from the typed words, with × to ignore it. */
+.quick-add-parsed {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin: -2px 0 0;
+  padding: 0 10px 9px 18px;
+  font-size: 12.5px;
+  color: var(--muted);
+  animation: slide-down 0.15s ease-out;
+}
+.quick-add-parsed > svg { flex-shrink: 0; color: var(--accent); }
+.quick-add.is-event .quick-add-parsed > svg { color: var(--event); }
+.quick-add-parsed-when { font-weight: 600; color: var(--accent); }
+.quick-add.is-event .quick-add-parsed-when { color: var(--event-fill-ink); }
+.quick-add-parsed-from { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+button.quick-add-parsed-ignore { padding: 2px 6px; font-size: 14px; color: var(--muted-soft); }
