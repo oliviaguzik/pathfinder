@@ -2,8 +2,9 @@
 
 // The fields shared by every add/edit event form. `form` is shaped like
 // EMPTY_EVENT_FORM (lib/events.js); `onChange` receives the changed keys.
-// Pass `showTitle={false}` when the caller renders the title input itself.
-export default function EventFields({ form, onChange, idPrefix, showTitle = true, showNotes = true, autoFocus = false }) {
+// Pass `showTitle={false}` when the caller renders the title input itself;
+// `dateHint` adds a small line under the Date field.
+export default function EventFields({ form, onChange, idPrefix, showTitle = true, showNotes = true, autoFocus = false, dateHint }) {
   const id = (suffix) => `${idPrefix}-${suffix}`;
 
   return (
@@ -24,6 +25,7 @@ export default function EventFields({ form, onChange, idPrefix, showTitle = true
       <div className="field">
         <label htmlFor={id("date")}>Date</label>
         <input id={id("date")} type="date" value={form.date} onChange={(e) => onChange({ date: e.target.value })} />
+        {dateHint && <span className="field-hint">{dateHint}</span>}
       </div>
       <div className="field field-recurring">
         <label htmlFor={id("allday")}>All day</label>

@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Icon from "./Icon";
+import HighlightInput from "./HighlightInput";
 import { parseQuickAdd } from "../../lib/parseQuickAdd";
 import { agendaDayLabel } from "../../lib/taskGroups";
 
@@ -25,7 +26,9 @@ export default function QuickAddTask({ onAdd, onCancel, placeholder = "Add a tas
   return (
     <form className="quick-add-task" onSubmit={submit}>
       <div className="quick-add-task-row">
-        <input
+        <HighlightInput
+          className="quick-add-task-input"
+          highlights={parsed ? found.phrases : []}
           type="text"
           value={text}
           placeholder={placeholder}
@@ -48,7 +51,6 @@ export default function QuickAddTask({ onAdd, onCancel, placeholder = "Add a tas
         <div className="quick-add-parsed" role="status">
           <Icon name="calendar" size={13} />
           <span className="quick-add-parsed-when">Due {agendaDayLabel(parsed.date)}</span>
-          <span className="quick-add-parsed-from">from “{parsed.phrase}”</span>
           <button
             type="button"
             className="ghost icon-btn quick-add-parsed-ignore"

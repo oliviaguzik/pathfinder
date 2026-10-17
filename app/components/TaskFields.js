@@ -9,7 +9,8 @@ const EFFORT_OPTIONS = [{ value: "", label: "None" }, "Small", "Medium", "Large"
 // The fields shared by every add/edit task form. `form` is shaped like
 // EMPTY_TASK_FORM (lib/taskForm.js); `onChange` receives the changed keys.
 // Pass `goalOptions` to also show the category and goal pickers, and
-// `showName={false}` when the caller renders the name input itself.
+// `showName={false}` when the caller renders the name input itself;
+// `dateHint` adds a small line under the Due date field.
 export default function TaskFields({
   form,
   onChange,
@@ -18,6 +19,7 @@ export default function TaskFields({
   autoFocus = false,
   goalOptions,
   showName = true,
+  dateHint,
 }) {
   const id = (suffix) => `${idPrefix}-${suffix}`;
 
@@ -81,6 +83,7 @@ export default function TaskFields({
           value={form.dueDate}
           onChange={(e) => onChange({ dueDate: e.target.value })}
         />
+        {dateHint && <span className="field-hint">{dateHint}</span>}
       </div>
       <div className="field field-recurring">
         <label htmlFor={id("recurring")}>Recurring</label>

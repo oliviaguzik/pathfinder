@@ -2180,7 +2180,6 @@ button.due-menu-trigger[aria-expanded="true"] > svg:last-child { opacity: 1; }
 .quick-add.is-event .quick-add-parsed > svg { color: var(--event); }
 .quick-add-parsed-when { font-weight: 600; color: var(--accent); }
 .quick-add.is-event .quick-add-parsed-when { color: var(--event-fill-ink); }
-.quick-add-parsed-from { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 button.quick-add-parsed-ignore { padding: 2px 6px; font-size: 14px; color: var(--muted-soft); }
 
 /* One-line "Add a task…" (goal cards): box and Add on one row, the read date below. */
@@ -2322,3 +2321,38 @@ button.quick-add-parsed-ignore { padding: 2px 6px; font-size: 14px; color: var(-
   .segmented button { min-height: 36px; }
   .task-row { padding-top: 8px; padding-bottom: 8px; }
 }
+
+/* Highlighted date words: a copy of the text sits behind the (transparent) box
+   with the understood words marked; only the marks show. */
+.hl-input { position: relative; display: flex; flex: 1; min-width: 0; }
+.hl-input > input { position: relative; z-index: 1; flex: 1; min-width: 0; background: transparent; }
+.hl-mirror {
+  position: absolute;
+  left: 0;
+  right: 0;
+  box-sizing: border-box;
+  overflow: hidden;
+  white-space: pre;
+  color: transparent;
+  pointer-events: none;
+}
+.hl-mirror mark {
+  color: transparent;
+  border-radius: 4px;
+  background: var(--accent-soft);
+  box-shadow: 0 0 0 2px var(--accent-soft);
+}
+.hl-event .hl-mirror mark { background: var(--event-soft); box-shadow: 0 0 0 2px var(--event-soft); }
+.quick-add-task .hl-input { background: var(--surface); border-radius: var(--radius-sm); }
+
+/* The one-time tip under the Add bar, and the hint under date fields. */
+.quick-add-tip {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 10px 8px 18px;
+  font-size: 12.5px;
+  color: var(--muted);
+}
+.quick-add.in-sheet .quick-add-tip { padding-left: 2px; }
+.field-hint { display: block; margin-top: 4px; font-size: 12px; color: var(--muted); }

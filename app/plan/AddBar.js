@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Icon from "../components/Icon";
+import HighlightInput from "../components/HighlightInput";
 import TaskFields from "../components/TaskFields";
 import EventFields from "../components/EventFields";
 import { eventFieldsFromForm, formatTime, newEventForm } from "../../lib/events";
@@ -17,6 +18,13 @@ function goalOptionsFor(goals) {
   const open = goals.filter((g) => !g.completed_at && !g.paused_at);
   return [{ value: "", label: "Select goal…" }, ...open.map((g) => ({ value: g.id, label: g.name }))];
 }
+
+// Examples the empty box cycles through, so the plain-word dates get noticed.
+const EXAMPLES = {
+  task: ["Call mom tomorrow", "Pay rent on the 1st", "Dentist fri", "Renew passport in 2 weeks", "Taxes oct 20"],
+  event: ["Dinner friday 7pm", "Haircut tue 3-4pm", "Lunch tomorrow at noon", "Yoga next monday 6pm"],
+};
+const TIP_KEY = "typedDatesTipDone";
 
 // An hour after "HH:MM" (or "" past 11pm), for an event typed with only a start.
 function hourLater(time) {
@@ -38,11 +46,36 @@ export default function AddBar({ inSheet = false, onAdded }) {
   const [optionsOpen, setOptionsOpen] = useState(false);
   // The words the user chose not to read as a date (× on the preview).
   const [ignored, setIgnored] = useState("");
+  const [exampleIndex, setExampleIndex] = useState(0);
+  // A one-time tip, until a typed date has been used (or the tip closed).
+  const [showTip, setShowTip] = useState(false);
+
+  useEffect(() => {
+    try {
+      setShowTip(localStorage.getItem(TIP_KEY) !== "yes");
+    } catch {}
+  }, []);
+
+  function tipDone() {
+    setShowTip(false);
+    try {
+      localStorage.setItem(TIP_KEY, "yes");
+    } catch {}
+  }
 
   const name = kind === "event" ? newEvent.title : newTask.name;
   const expanded = inSheet || optionsOpen || name.trim() !== "";
   const found = parseQuickAdd(name, { withTime: kind === "event" });
   const parsed = (found.date || found.startTime) && found.phrase !== ignored ? found : null;
+
+  // While the box is empty, show a new example every few seconds.
+  const examples = EXAMPLES[kind];
+  useEffect(() => {
+    if (name) return;
+    const timer = setInterval(() => setExampleIndex((i) => i + 1), 3500);
+    return () => clearInterval(timer);
+  }, [name]);
+  const example = examples[exampleIndex % examples.length];
 
   // What will be saved: the typed date / time win over the Options fields.
   const taskForm = parsed?.date ? { ...newTask, dueDate: parsed.date } : newTask;
@@ -75,6 +108,7 @@ export default function AddBar({ inSheet = false, onAdded }) {
 
   async function submit(e) {
     e.preventDefault();
+    if (parsed && showTip) tipDone();
     if (kind === "event") {
       const { fields, error } = eventFieldsFromForm({ ...eventForm, title: parsed ? parsed.title : eventForm.title });
       if (error) return notifyWarning(error);
@@ -116,11 +150,13 @@ export default function AddBar({ inSheet = false, onAdded }) {
             <Icon name="clock" size={13} /> Event
           </button>
         </div>
-        <input
-          className="quick-add-input"
+        <HighlightInput
+          className="quick-add-input-wrap"
+          highlights={parsed ? found.phrases : []}
+          tone={kind === "event" ? "event" : "accent"}
           autoFocus={inSheet}
           type="text"
-          placeholder={kind === "event" ? "Add an event… e.g. Dinner friday 7pm" : "Add a task… e.g. Call mom tomorrow"}
+          placeholder={`${kind === "event" ? "Add an event" : "Add a task"}… e.g. ${example}`}
           aria-label={kind === "event" ? "Event name" : "Task name"}
           value={name}
           onChange={(e) => {
@@ -128,6 +164,7 @@ export default function AddBar({ inSheet = false, onAdded }) {
             if (kind === "event") setNewEvent((f) => ({ ...f, title: e.target.value }));
             else setNewTask((f) => ({ ...f, name: e.target.value }));
           }}
+          inputClassName="quick-add-input"
         />
         {!inSheet && (
           <button type="button" className="ghost quick-add-options-btn" aria-expanded={expanded} onClick={() => setOptionsOpen((o) => !o)}>
@@ -142,7 +179,6 @@ export default function AddBar({ inSheet = false, onAdded }) {
         <div className="quick-add-parsed" role="status">
           <Icon name={kind === "event" ? "clock" : "calendar"} size={13} />
           <span className="quick-add-parsed-when">{preview}</span>
-          <span className="quick-add-parsed-from">from “{parsed.phrase}”</span>
           <button
             type="button"
             className="ghost icon-btn quick-add-parsed-ignore"
@@ -150,6 +186,17 @@ export default function AddBar({ inSheet = false, onAdded }) {
             aria-label={`Don't read “${parsed.phrase}” as a date`}
             title="Keep these words in the name instead"
           >
+            ×
+          </button>
+        </div>
+      )}
+      {!parsed && showTip && (
+        <div className="quick-add-tip">
+          <span>
+            Tip: type {kind === "event" ? "a day and time like “fri 7pm”" : "a date like “tomorrow”, “fri” or “oct 20”"} and
+            it’s set for you.
+          </span>
+          <button type="button" className="ghost icon-btn quick-add-parsed-ignore" onClick={tipDone} aria-label="Hide this tip" title="Hide tip">
             ×
           </button>
         </div>
@@ -163,6 +210,7 @@ export default function AddBar({ inSheet = false, onAdded }) {
               idPrefix={inSheet ? "sheet-event" : "new-event"}
               showTitle={false}
               showNotes={false}
+              dateHint="or type it in the name, e.g. “fri 7pm”"
             />
           ) : (
             <TaskFields
@@ -171,6 +219,7 @@ export default function AddBar({ inSheet = false, onAdded }) {
               idPrefix={inSheet ? "sheet-task" : "task"}
               goalOptions={goalOptionsFor(goals)}
               showName={false}
+              dateHint="or type it in the name, e.g. “next fri”"
             />
           )}
         </div>

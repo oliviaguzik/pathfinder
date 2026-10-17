@@ -83,8 +83,14 @@ answers "what matters today?" and leaves adding/planning to Tasks.
 - Dates in plain words: typing "Call mom tomorrow", "Pay rent on the 1st",
   "Taxes oct 20", "Review next friday", "in 2 weeks" or "10/30" in the Add bar
   sets the date; in Event mode times too ("Dinner friday 7pm", "3-4pm",
-  "at noon", "at 6" = 6 PM). A line under the bar shows what was understood
-  ("Due Tomorrow from “tomorrow”") with × to keep the words in the name;
+  "at noon", "at 6" = 6 PM). The understood words get a soft highlight right
+  in the box (`HighlightInput`: a copy of the text behind the box), and a line
+  under it shows the result ("Due Fri, Oct 30") with × to keep the words in
+  the name. To make the feature discoverable: the empty box cycles through
+  examples ("e.g. Pay rent on the 1st"), a one-time tip under the bar explains
+  it until a typed date is used or the tip is closed (localStorage
+  `typedDatesTipDone`), and the Options date field says "or type it in the
+  name, e.g. “next fri”". Goal cards' add box highlights the same way;
   the words are taken out of the saved name. Changing the date in Options by
   hand wins. "sun"/"sat" alone aren't read as days ("sun cream").
   Parser: `parseQuickAdd` in `lib/parseQuickAdd.js` (tested)
