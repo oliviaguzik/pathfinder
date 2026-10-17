@@ -103,8 +103,8 @@ answers "what matters today?" and leaves adding/planning to Tasks.
 - Today shows events inside its one Today card; events count in the
   summary line
 
-**Plan page** (`app/plan/page.js`, formerly Tasks; `/tasks` redirects
-here). Title "Plan", subtitle "Your tasks and events, all in one place."
+**Plan page** (`app/plan/`, formerly Tasks; `/tasks` redirects here; see
+the README for which file does what). Title "Plan", subtitle "Your tasks and events, all in one place."
 - Add task form: name, category, goal picker (when Goal-Related), priority,
   effort, due date, recurring toggle (daily/weekly/monthly presets or custom
   N-day interval)
@@ -122,8 +122,8 @@ here). Title "Plan", subtitle "Your tasks and events, all in one place."
 - List view and calendar view (toggle persisted to localStorage). Calendar
   view supports dragging tasks onto a day to change its due date, dragging to
   the "No date" part of the side panel to unschedule it, and shows
-  overdue/due-today styling. The side panel (Agenda + No date) is sized to
-  the calendar's height
+  overdue/due-today styling. The side panel (Scheduled + No date) matches
+  the calendar's height with CSS alone (a stretching frame), and scrolls inside
 - Completing a recurring task automatically creates the next occurrence
 - Completed tasks always sink to the bottom regardless of sort/view
 

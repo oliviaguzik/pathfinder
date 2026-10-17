@@ -45,9 +45,12 @@ Import the GitHub repo in Vercel and add `NEXT_PUBLIC_SUPABASE_URL` and
 
 ## Project layout
 - `app/page.js`: Today (home screen: events, main goal, focus, tasks due)
-- `app/plan/page.js`: Plan page, formerly Tasks (`app/tasks/page.js` now just
-  redirects here) (Add bar for tasks and events; list and
-  month / week / day calendar views)
+- `app/plan/`: Plan page, formerly Tasks (`app/tasks/page.js` just redirects
+  here). `page.js` wires it together; `usePlanData.js` holds the data and every
+  change (instant updates, Undo); `AddBar.js`, `FilterBar.js`, `PlanList.js`
+  (Scheduled beside No date) and `PlanCalendar.js` (Month / Week / Day and the
+  side panel) are the parts; `rows.js` has the task and event rows they share
+  through `PlanContext.js`
 - `app/review/page.js`: Review (week / month / year stats, chart, goal check-in)
 - `app/goals/page.js`: Goals page (main goal, paused and finished goals)
 - `app/components/`: shared UI (`TaskFields` / `EventFields` are the shared
