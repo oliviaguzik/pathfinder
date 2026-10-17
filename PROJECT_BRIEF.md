@@ -228,6 +228,17 @@ Clean, modern, calm — closer to Things/Todoist than a form-based admin tool.
 - Calendar has Month, Week and Day modes (remembered like the list/calendar
   toggle); clicking a day opens a panel with that day's tasks and a quick
   add for that date; busy month cells show "+N more"
+- Phones (600px and below):
+  - A bottom tab bar (Today · Plan · Goals · Review, icons + labels); the top
+    bar keeps the logo and a ☰ menu (switch light / dark, Sign out)
+  - Plan: the Add bar becomes a floating + button that opens it in a sheet
+    (options open, box focused, closes after adding)
+  - Every dialog is a bottom sheet (slides up, full width, grab handle)
+  - Calendar: month cells show dots (teal = events, grey = open tasks);
+    tapping a day lists it under the grid (today at first). Week view stacks
+    the days as rows. (`useIsPhone` in app/components)
+  - Touch screens get bigger targets (22px checkboxes, 40px buttons, roomier
+    menus) and row buttons are always visible
 - Phones: tapping a row opens it; the Add bar
   puts the Task/Event switch and Options on top, text box and Add below;
   the top bar drops the "PathFinder" word so all tabs fit; calendar

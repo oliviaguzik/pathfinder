@@ -4,9 +4,9 @@ import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import Icon from "./Icon";
 
-// A "⋯" button that opens a small list of actions, right-aligned under it.
-// items: [{ label, onClick, danger }]
-export default function Menu({ items, label = "More actions" }) {
+// A "⋯" button (or another `icon`) that opens a small list of actions,
+// right-aligned under it. items: [{ label, onClick, danger }]
+export default function Menu({ items, label = "More actions", icon = "more", className = "" }) {
   const [open, setOpen] = useState(false);
   const [coords, setCoords] = useState({ top: 0, right: 0 });
   const triggerRef = useRef(null);
@@ -49,7 +49,7 @@ export default function Menu({ items, label = "More actions" }) {
       <button
         type="button"
         ref={triggerRef}
-        className="ghost icon-btn menu-trigger"
+        className={`ghost icon-btn menu-trigger ${className}`}
         aria-label={label}
         title={label}
         aria-haspopup="menu"
@@ -60,7 +60,7 @@ export default function Menu({ items, label = "More actions" }) {
           setOpen((o) => !o);
         }}
       >
-        <Icon name="more" size={16} />
+        <Icon name={icon} size={icon === "more" ? 16 : 18} />
       </button>
       {open &&
         typeof document !== "undefined" &&

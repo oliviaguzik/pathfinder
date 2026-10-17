@@ -1964,14 +1964,7 @@ button.add-event-link:hover { color: var(--event); background: var(--event-soft)
   .task-row .task-main { flex: 1 1 0; }
 }
 
-/* Phones: a tighter top bar so every tab fits. */
-@media (max-width: 520px) {
-  .topnav { padding: 12px 14px; }
-  .topnav .brand-name { display: none; }
-  .navlinks { gap: 0; }
-  .navlinks a { padding: 6px 8px; }
-  .topnav button.ghost { padding: 6px 8px; white-space: nowrap; }
-}
+
 
 /* ---------- Plan list view: Scheduled (by day) beside No date ---------- */
 .plan-columns {
@@ -2198,4 +2191,134 @@ button.quick-add-parsed-ignore { padding: 2px 6px; font-size: 14px; color: var(-
 /* Page headers with buttons (Goals): on phones the buttons drop below the title. */
 @media (max-width: 600px) {
   .page-head { flex-wrap: wrap; gap: 12px; }
+}
+
+/* ---------- Phones: bottom tab bar, ☰ menu ---------- */
+.tabbar, .topnav-phone { display: none; }
+@media (max-width: 600px) {
+  .topnav { padding: 10px 14px; }
+  .topnav-wide { display: none !important; }
+  .topnav-phone { display: block; margin-right: -6px; }
+  .tabbar {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 50;
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    padding: 6px 6px calc(6px + env(safe-area-inset-bottom, 0px));
+    border-top: 1px solid var(--border-soft);
+    background: color-mix(in srgb, var(--surface) 88%, transparent);
+    backdrop-filter: saturate(1.4) blur(12px);
+    -webkit-backdrop-filter: saturate(1.4) blur(12px);
+  }
+  .tabbar a {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 3px;
+    padding: 6px 0 4px;
+    border-radius: 10px;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--muted);
+    text-decoration: none;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .tabbar a.active { color: var(--accent); }
+  .tabbar a.active svg { filter: drop-shadow(0 0 6px var(--accent-soft)); }
+  .tabbar a:active { background: var(--surface-sunken); }
+  /* Room for the tab bar under the page, and notes float above it. */
+  .container { padding: 22px 16px calc(96px + env(safe-area-inset-bottom, 0px)); }
+  .app-toast { bottom: calc(80px + env(safe-area-inset-bottom, 0px)); }
+}
+
+/* Floating + (phones, Plan): opens the Add sheet; the inline Add bar hides. */
+.fab { display: none; }
+@media (max-width: 600px) {
+  .plan-addbar-inline { display: none; }
+  button.fab {
+    position: fixed;
+    right: 18px;
+    bottom: calc(84px + env(safe-area-inset-bottom, 0px));
+    z-index: 40;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 56px;
+    height: 56px;
+    padding: 0;
+    border: none;
+    border-radius: 50%;
+    background: var(--accent-solid);
+    color: var(--text-inverse);
+    box-shadow: 0 6px 20px color-mix(in srgb, var(--accent-solid) 40%, transparent), var(--shadow-md);
+  }
+  button.fab:active { transform: scale(0.94); }
+  /* The Add sheet's bar: no card look inside the sheet; the box sits on its own line. */
+  .quick-add.in-sheet { margin: 0; border: none; box-shadow: none; background: transparent; }
+  .quick-add.in-sheet .quick-add-row { padding: 0 0 10px; }
+  .quick-add.in-sheet .quick-add-options { padding: 14px 0 4px; }
+  .quick-add.in-sheet .quick-add-parsed { padding-left: 2px; }
+}
+
+/* Dialogs on phones: sheets that slide up from the bottom, full width. */
+@media (max-width: 600px) {
+  .modal-backdrop { align-items: flex-end; padding: 0; }
+  .modal {
+    max-width: none;
+    max-height: 88vh;
+    border-radius: 18px 18px 0 0;
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+    animation: sheet-up 0.24s cubic-bezier(0.2, 0.8, 0.3, 1);
+  }
+  .modal-header { position: relative; padding-top: 22px; }
+  /* A grab handle, so it reads as a sheet. */
+  .modal-header::before {
+    content: "";
+    position: absolute;
+    top: 8px;
+    left: 50%;
+    width: 36px;
+    height: 4px;
+    margin-left: -18px;
+    border-radius: 2px;
+    background: var(--border);
+  }
+  .modal .form-actions { flex-wrap: wrap; }
+}
+@keyframes sheet-up {
+  from { transform: translateY(100%); }
+  to { transform: none; }
+}
+
+/* Calendar on phones: month cells show dots; the chosen day is listed below. */
+.calendar-dots { display: flex; flex-wrap: wrap; justify-content: center; gap: 3px; margin-top: 2px; min-height: 6px; }
+.calendar-dot { width: 6px; height: 6px; border-radius: 50%; }
+.calendar-dot.event { background: var(--event); }
+.calendar-dot.task { background: var(--muted-soft); }
+.calendar-cell.selected { background: var(--accent-soft); }
+.calendar-cell.selected .calendar-date { color: var(--accent); font-weight: 700; }
+.calendar-phone-day { margin-top: 14px; }
+.calendar-phone-day .plan-day-label { padding-left: 2px; }
+@media (max-width: 600px) {
+  .calendar-cell { min-height: 52px; align-items: center; }
+  /* Week: days stacked, each as a row with the date on the left. */
+  .calendar-week { grid-template-columns: minmax(0, 1fr); overflow-x: visible; }
+  .calendar-week-day { display: grid; grid-template-columns: 56px minmax(0, 1fr); min-height: 64px; }
+  .calendar-week-head { border-bottom: none; border-right: 1px solid var(--border-soft); }
+  .calendar-week-tasks { padding: 8px; }
+}
+
+/* Touch screens: bigger targets (about 44px), and row buttons always show. */
+@media (pointer: coarse) {
+  .checkbox { width: 22px; height: 22px; }
+  .checkbox:checked::after { width: 10px; height: 5px; }
+  .icon-btn, button.row-delete-btn { min-width: 40px; min-height: 40px; }
+  .menu-item { padding: 12px 14px; font-size: 15px; }
+  .menu-panel { min-width: 200px; }
+  button.due-menu-trigger { padding: 6px 8px; margin: -6px -8px; }
+  .segmented button { min-height: 36px; }
+  .task-row { padding-top: 8px; padding-bottom: 8px; }
 }

@@ -81,6 +81,26 @@ const PATHS = {
       <circle cx="12" cy="12" r="0.8" />
     </>
   ),
+  home: (
+    <>
+      <path d="M4 10.5 12 4l8 6.5V20a1 1 0 0 1-1 1h-4.5v-6h-5v6H5a1 1 0 0 1-1-1Z" />
+    </>
+  ),
+  chart: (
+    <>
+      <line x1="4" y1="20" x2="20" y2="20" />
+      <rect x="6" y="11" width="3" height="6" rx="1" />
+      <rect x="11" y="6" width="3" height="11" rx="1" />
+      <rect x="16" y="13" width="3" height="4" rx="1" />
+    </>
+  ),
+  menu: (
+    <>
+      <line x1="4" y1="7" x2="20" y2="7" />
+      <line x1="4" y1="12" x2="20" y2="12" />
+      <line x1="4" y1="17" x2="20" y2="17" />
+    </>
+  ),
   repeat: (
     <>
       <path d="M17 2l3 3-3 3" />

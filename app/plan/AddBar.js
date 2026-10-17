@@ -28,7 +28,9 @@ function hourLater(time) {
 // "Options"; in Event mode the bar turns teal. Dates (and event times) typed in
 // plain words ("Dentist fri 3pm") are picked up, shown under the bar, and can
 // be ignored with ×.
-export default function AddBar() {
+// In the phone sheet (`inSheet`), options are always open, the box is focused,
+// and `onAdded` closes the sheet after a save.
+export default function AddBar({ inSheet = false, onAdded }) {
   const { goals, addTask, addEvent } = usePlan();
   const [kind, setKind] = useState("task");
   const [newTask, setNewTask] = useState(EMPTY_TASK_FORM);
@@ -38,7 +40,7 @@ export default function AddBar() {
   const [ignored, setIgnored] = useState("");
 
   const name = kind === "event" ? newEvent.title : newTask.name;
-  const expanded = optionsOpen || name.trim() !== "";
+  const expanded = inSheet || optionsOpen || name.trim() !== "";
   const found = parseQuickAdd(name, { withTime: kind === "event" });
   const parsed = (found.date || found.startTime) && found.phrase !== ignored ? found : null;
 
@@ -80,6 +82,7 @@ export default function AddBar() {
       if (!saveError) {
         setNewEvent(newEventForm());
         setIgnored("");
+        onAdded?.();
       }
       return;
     }
@@ -90,6 +93,7 @@ export default function AddBar() {
       goal_id: newTask.category === "Goal-Related" && newTask.goalId ? newTask.goalId : null,
     });
     setIgnored("");
+    onAdded?.();
     // Category, goal, priority and effort stay selected for the next task.
     setNewTask((f) => ({
       ...f,
@@ -102,7 +106,7 @@ export default function AddBar() {
   }
 
   return (
-    <form className={`quick-add ${expanded ? "expanded" : ""} ${kind === "event" ? "is-event" : ""}`} onSubmit={submit}>
+    <form className={`quick-add ${expanded ? "expanded" : ""} ${kind === "event" ? "is-event" : ""} ${inSheet ? "in-sheet" : ""}`} onSubmit={submit}>
       <div className="quick-add-row">
         <div className="segmented add-kind" role="group" aria-label="What to add">
           <button type="button" className={kind === "task" ? "active" : ""} aria-pressed={kind === "task"} onClick={() => setKind("task")}>
@@ -114,6 +118,7 @@ export default function AddBar() {
         </div>
         <input
           className="quick-add-input"
+          autoFocus={inSheet}
           type="text"
           placeholder={kind === "event" ? "Add an event… e.g. Dinner friday 7pm" : "Add a task… e.g. Call mom tomorrow"}
           aria-label={kind === "event" ? "Event name" : "Task name"}
@@ -124,9 +129,11 @@ export default function AddBar() {
             else setNewTask((f) => ({ ...f, name: e.target.value }));
           }}
         />
-        <button type="button" className="ghost quick-add-options-btn" aria-expanded={expanded} onClick={() => setOptionsOpen((o) => !o)}>
-          {expanded ? "Fewer options" : "Options"}
-        </button>
+        {!inSheet && (
+          <button type="button" className="ghost quick-add-options-btn" aria-expanded={expanded} onClick={() => setOptionsOpen((o) => !o)}>
+            {expanded ? "Fewer options" : "Options"}
+          </button>
+        )}
         <button type="submit" className={`primary ${kind === "event" ? "event-primary" : ""}`} disabled={!name.trim()}>
           Add
         </button>
@@ -153,7 +160,7 @@ export default function AddBar() {
             <EventFields
               form={eventForm}
               onChange={(patch) => editOptions(setNewEvent, patch, ["date", "allDay", "startTime", "endTime"])}
-              idPrefix="new-event"
+              idPrefix={inSheet ? "sheet-event" : "new-event"}
               showTitle={false}
               showNotes={false}
             />
@@ -161,7 +168,7 @@ export default function AddBar() {
             <TaskFields
               form={taskForm}
               onChange={(patch) => editOptions(setNewTask, patch, ["dueDate"])}
-              idPrefix="task"
+              idPrefix={inSheet ? "sheet-task" : "task"}
               goalOptions={goalOptionsFor(goals)}
               showName={false}
             />

@@ -3,6 +3,12 @@
 import { useEffect, useState } from "react";
 import Icon from "./Icon";
 
+// Switches the app's theme and remembers it.
+export function applyTheme(next) {
+  document.documentElement.setAttribute("data-theme", next);
+  localStorage.setItem("theme", next);
+}
+
 export default function ThemeToggle() {
   const [theme, setTheme] = useState(null);
 
@@ -13,8 +19,7 @@ export default function ThemeToggle() {
   function toggle() {
     const next = theme === "dark" ? "light" : "dark";
     setTheme(next);
-    document.documentElement.setAttribute("data-theme", next);
-    localStorage.setItem("theme", next);
+    applyTheme(next);
   }
 
   return (

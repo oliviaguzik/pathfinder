@@ -9,6 +9,7 @@ import { getMonthGrid, getWeekDays, isSameDay, parseLocalDate, toISODateLocal, w
 import { EMPTY_TASK_FORM, taskFieldsFromForm } from "../../lib/taskForm";
 import { sortDoneLast } from "../../lib/taskSort";
 import { usePlan } from "./PlanContext";
+import { useIsPhone } from "../components/useIsPhone";
 import { CalendarEventChip, CalendarTaskChip, ListEvent, SideEventRow, SideTaskRow, TaskRow, WeekEvent, WeekTask } from "./rows";
 
 const WEEKDAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
@@ -22,6 +23,10 @@ export default function PlanCalendar({ agenda, visibleTasks, dialogOpen }) {
   const [calendarDate, setCalendarDate] = useState(new Date());
   const [mode, setMode] = useState("month");
   const [selectedDay, setSelectedDay] = useState(null);
+  // Phones, month view: cells show dots, and the tapped day (today at first)
+  // is listed under the grid instead of in a popup.
+  const isPhone = useIsPhone();
+  const inlineDay = isPhone && mode === "month";
   const [dayTaskName, setDayTaskName] = useState("");
   const [draggedId, setDraggedId] = useState(null);
 
@@ -32,6 +37,7 @@ export default function PlanCalendar({ agenda, visibleTasks, dialogOpen }) {
 
   function changeMode(next) {
     setMode(next);
+    setSelectedDay(null);
     localStorage.setItem("calendarMode", next);
   }
 
@@ -137,7 +143,7 @@ export default function PlanCalendar({ agenda, visibleTasks, dialogOpen }) {
             aria-label="New task name"
             value={dayTaskName}
             onChange={(e) => setDayTaskName(e.target.value)}
-            autoFocus={!!selectedDay}
+            autoFocus={!!selectedDay && !inlineDay}
           />
           <button type="submit" className="primary" disabled={!dayTaskName.trim()}>Add</button>
         </form>
@@ -192,9 +198,12 @@ export default function PlanCalendar({ agenda, visibleTasks, dialogOpen }) {
                   )),
                 ];
                 const hidden = items.length - MONTH_CELL_LIMIT;
+                const openTasks = (tasksByDate[cellDate] || []).filter((t) => t.status !== "Done").length;
+                const eventCount = (eventsByDate[cellDate] || []).length;
+                const selected = inlineDay && cellDate === (selectedDay || toISODateLocal(today));
                 return (
                   <div
-                    className={`calendar-cell ${outside ? "outside" : ""} ${isSameDay(date, today) ? "today" : ""} ${draggedId ? "drop-target" : ""}`}
+                    className={`calendar-cell ${outside ? "outside" : ""} ${isSameDay(date, today) ? "today" : ""} ${selected ? "selected" : ""} ${draggedId ? "drop-target" : ""}`}
                     key={cellDate}
                     onClick={() => openDay(cellDate)}
                     {...dropTarget(cellDate)}
@@ -206,10 +215,21 @@ export default function PlanCalendar({ agenda, visibleTasks, dialogOpen }) {
                     >
                       {date.getDate()}
                     </button>
-                    <div className="calendar-cell-tasks">
-                      {items.slice(0, hidden > 0 ? MONTH_CELL_LIMIT - 1 : MONTH_CELL_LIMIT)}
-                      {hidden > 0 && <span className="calendar-more">+{hidden + 1} more</span>}
-                    </div>
+                    {inlineDay ? (
+                      <div className="calendar-dots" aria-label={`${eventCount} events, ${openTasks} open tasks`}>
+                        {Array.from({ length: Math.min(eventCount, 3) }, (_, i) => (
+                          <span key={`e${i}`} className="calendar-dot event" />
+                        ))}
+                        {Array.from({ length: Math.min(openTasks, 3) }, (_, i) => (
+                          <span key={`t${i}`} className="calendar-dot task" />
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="calendar-cell-tasks">
+                        {items.slice(0, hidden > 0 ? MONTH_CELL_LIMIT - 1 : MONTH_CELL_LIMIT)}
+                        {hidden > 0 && <span className="calendar-more">+{hidden + 1} more</span>}
+                      </div>
+                    )}
                   </div>
                 );
               })}
@@ -242,6 +262,18 @@ export default function PlanCalendar({ agenda, visibleTasks, dialogOpen }) {
                   </div>
                 );
               })}
+            </div>
+          )}
+          {inlineDay && (
+            <div className="calendar-phone-day">
+              <h3 className="plan-day-label">
+                {parseLocalDate(selectedDay || toISODateLocal(today)).toLocaleDateString(undefined, {
+                  weekday: "long",
+                  month: "long",
+                  day: "numeric",
+                })}
+              </h3>
+              {dayPanel(selectedDay || toISODateLocal(today))}
             </div>
           )}
           <div className="calendar-legend" aria-hidden="true">
@@ -308,7 +340,7 @@ export default function PlanCalendar({ agenda, visibleTasks, dialogOpen }) {
       </div>
 
       <Modal
-        open={!!selectedDay && !dialogOpen}
+        open={!!selectedDay && !dialogOpen && !inlineDay}
         onClose={() => setSelectedDay(null)}
         title={selectedDay ? parseLocalDate(selectedDay).toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" }) : ""}
       >

@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from "react";
 import EventModal from "../components/EventModal";
+import Modal from "../components/Modal";
+import Icon from "../components/Icon";
 import TaskEditModal from "../components/TaskEditModal";
 import { buildAgenda, groupTasksByDue } from "../../lib/taskGroups";
 import { sortTasksList } from "../../lib/taskSort";
@@ -22,6 +24,8 @@ export default function PlanPage() {
   // The dialogs: the task being edited, and { event } to edit one or { date } to add one.
   const [editingTask, setEditingTask] = useState(null);
   const [eventDialog, setEventDialog] = useState(null);
+  // Phones: the Add bar lives in a sheet opened by the floating + button.
+  const [addSheetOpen, setAddSheetOpen] = useState(false);
 
   useEffect(() => {
     const stored = localStorage.getItem("tasksView");
@@ -65,7 +69,15 @@ export default function PlanPage() {
         <h1>Plan</h1>
         <p className="page-sub">Your tasks and events, all in one place.</p>
 
-        <AddBar />
+        <div className="plan-addbar-inline">
+          <AddBar />
+        </div>
+        <button type="button" className="fab" onClick={() => setAddSheetOpen(true)} aria-label="Add a task or event">
+          <Icon name="plus" size={24} />
+        </button>
+        <Modal open={addSheetOpen} onClose={() => setAddSheetOpen(false)} title="Add">
+          <AddBar inSheet onAdded={() => setAddSheetOpen(false)} />
+        </Modal>
         <FilterBar
           filters={filters}
           onFiltersChange={setFilters}
