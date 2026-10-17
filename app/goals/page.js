@@ -7,8 +7,8 @@ import Modal from "../components/Modal";
 import Celebration from "../components/Celebration";
 import Skeleton from "../components/Skeleton";
 import Icon from "../components/Icon";
-import TaskFields from "../components/TaskFields";
 import TaskEditModal from "../components/TaskEditModal";
+import QuickAddTask from "../components/QuickAddTask";
 import TaskMeta from "../components/TaskMeta";
 import Menu from "../components/Menu";
 import { deleteTaskAndSync, restoreTask, toggleTaskDone, undoTaskDone } from "../../lib/taskActions";
@@ -70,7 +70,6 @@ export default function GoalsPage() {
   const [confirmingDeleteId, setConfirmingDeleteId] = useState(null);
 
   const [addTaskForId, setAddTaskForId] = useState(null);
-  const [newTask, setNewTask] = useState(EMPTY_TASK_FORM);
 
   // The task open in the edit dialog (the same dialog as on Today and Plan).
   const [editingTask, setEditingTask] = useState(null);
@@ -200,20 +199,18 @@ export default function GoalsPage() {
 
   function toggleAddTaskFor(goalId) {
     setAddTaskForId((prev) => (prev === goalId ? null : goalId));
-    setNewTask(EMPTY_TASK_FORM);
   }
 
-  async function addTaskToGoal(e, goalId) {
-    e.preventDefault();
-    if (!newTask.name.trim()) return notifyWarning("Give the task a name first.");
+  // The box stays open after adding, so several steps can go in one after another.
+  async function addTaskToGoal(goalId, { name, dueDate }) {
     await supabase.from("tasks").insert({
-      ...taskFieldsFromForm(newTask),
+      ...taskFieldsFromForm({ ...EMPTY_TASK_FORM, name, dueDate }),
       category: "Goal-Related",
       goal_id: goalId,
       status: "To Do",
+      position: nextPosition(tasks),
       user_id: user.id,
     });
-    setAddTaskForId(null);
     loadData();
   }
 
@@ -394,24 +391,6 @@ export default function GoalsPage() {
       : { text: "Behind pace", cls: "badge-high" };
   }
 
-  function renderAddTaskForm(goalId) {
-    return (
-      <form className="form-grid" onSubmit={(e) => addTaskToGoal(e, goalId)}>
-        <TaskFields
-          form={newTask}
-          onChange={(patch) => setNewTask((f) => ({ ...f, ...patch }))}
-          idPrefix="goal-task"
-          namePlaceholder="e.g. Practice verbs"
-          autoFocus
-        />
-        <div className="form-actions">
-          <button type="submit" className="primary">Add task</button>
-          <button type="button" onClick={() => toggleAddTaskFor(goalId)}>Cancel</button>
-        </div>
-      </form>
-    );
-  }
-
   function renderTaskRow(t, locked = false) {
     return (
       <div
@@ -579,7 +558,16 @@ export default function GoalsPage() {
             )}
           </div>
 
-          {addingHere && !locked && <div className="tile-add-task-form">{renderAddTaskForm(g.id)}</div>}
+          {addingHere && !locked && (
+            <div className="tile-add-task-form">
+              <QuickAddTask
+                autoFocus
+                placeholder="Add a task… e.g. Call the bank fri"
+                onAdd={(task) => addTaskToGoal(g.id, task)}
+                onCancel={() => setAddTaskForId(null)}
+              />
+            </div>
+          )}
 
           <div className="tile-tasks-list">
             {goalTasks.length === 0 && <p className="muted">No tasks linked yet.</p>}
@@ -763,7 +751,7 @@ export default function GoalsPage() {
         onSaved={loadData}
       />
       <Celebration trigger={celebration.key} message={celebration.message} subtitle={celebration.subtitle} />
-      <div className="row-between" style={{ alignItems: "flex-start" }}>
+      <div className="row-between page-head" style={{ alignItems: "flex-start" }}>
         <div>
           <h1>Goals</h1>
           <p className="page-sub">Track progress toward the things that matter beyond day-to-day tasks.</p>

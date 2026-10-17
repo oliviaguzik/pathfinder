@@ -66,8 +66,9 @@ answers "what matters today?" and leaves adding/planning to Tasks.
   `lib/insights.js`: past target date, no next step, no progress in 7+
   days, or ready to finish) beside a "Finished tasks" card grouped like the
   chart (latest 8, then "Show more"); both reset when the period changes
-- "Needs a decision" (overdue tasks with Today / Tomorrow / Next week /
-  No date) shows only for the current period
+- "Needs a decision": overdue tasks whose "Was due …" date opens the shared
+  "Move to" menu; rows (and Finished tasks) open the Edit task dialog. Shows
+  only for the current period
 
 **Events** (`events` table, `lib/events.js`, `app/components/EventModal.js`)
 - Things that happen at a time (appointments, hangouts): title, date,
@@ -156,8 +157,11 @@ the README for which file does what). Title "Plan", subtitle "Your tasks and eve
   overrides
 - Grid view and list view (toggle persisted to localStorage); list view rows
   expand/collapse to show the task checklist
-- Inline "+ Add task" form scoped to a goal (same fields as the Plan page,
-  including recurrence); editing a goal's task opens the shared Edit task dialog
+- "+ Add task" on a goal opens a one-line "Add a task…" box
+  (`QuickAddTask`) that reads plain-word dates like the Plan Add bar and stays
+  open for the next step (Done or Escape closes it); editing a goal's task
+  opens the shared Edit task dialog. Goal cards share the width equally
+  (no card grows to fit a long task name) and task names wrap
 - Drag-and-drop manual reordering of goals
 
 **Feel (Today, Plan, Goals)**
@@ -202,6 +206,8 @@ Clean, modern, calm — closer to Things/Todoist than a form-based admin tool.
 - With a mouse, a row's buttons float over its right end on hover, so
   names use the full width
 - Overdue tasks are rescheduled by clicking their date (see Rescheduling)
+- No divider lines between rows anywhere (Today, Plan, Goals, Review, side
+  panel): rows sit on spacing and highlight on hover
 - Task rows show a small details line (friendly dates like "Tomorrow" /
   "Oct 19", goal, priority flag, effort, repeat); drag handles and
   edit/delete appear on hover

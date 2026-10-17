@@ -5,7 +5,10 @@ import { supabase } from "../../lib/supabaseClient";
 import Skeleton from "../components/Skeleton";
 import Icon from "../components/Icon";
 import CircularProgress from "../components/CircularProgress";
-import { friendlyDate, getWeekDays, parseLocalDate, toISODateLocal, todayLocalISODate, weekLabel } from "../../lib/dates";
+import DueDateMenu from "../components/DueDateMenu";
+import TaskEditModal from "../components/TaskEditModal";
+import { openOnKey, openOnRowClick } from "../../lib/rowClick";
+import { friendlyDate, getWeekDays, toISODateLocal, todayLocalISODate, weekLabel } from "../../lib/dates";
 import { getPeriod, goalsNeedingAttention, periodReport, shiftAnchor } from "../../lib/insights";
 
 const RANGES = [
@@ -31,11 +34,6 @@ function MoreLess({ hidden, expanded, onMore, onLess }) {
       <button type="button" className="ghost small-btn" onClick={onLess}>Show less</button>
     </div>
   );
-}
-
-function shiftDays(dateStr, days) {
-  const d = parseLocalDate(dateStr);
-  return toISODateLocal(new Date(d.getFullYear(), d.getMonth(), d.getDate() + days));
 }
 
 // "Today" -> "today" mid-sentence; dates like "Oct 19" stay as they are.
@@ -124,6 +122,8 @@ export default function ReviewPage() {
   const [anchor, setAnchor] = useState(() => new Date());
   const [goalLimit, setGoalLimit] = useState(GOALS_PAGE);
   const [taskLimit, setTaskLimit] = useState(TASKS_PAGE);
+  // The task open in the edit dialog (the same dialog as everywhere else).
+  const [editingTask, setEditingTask] = useState(null);
 
   // Back to the short lists whenever the period changes.
   useEffect(() => {
@@ -172,6 +172,7 @@ export default function ReviewPage() {
   }
 
   async function moveTo(task, dateStr) {
+    setTasks((list) => list.map((t) => (t.id === task.id ? { ...t, due_date: dateStr } : t)));
     await supabase.from("tasks").update({ due_date: dateStr }).eq("id", task.id);
     loadData();
   }
@@ -347,9 +348,11 @@ export default function ReviewPage() {
                     <span>{total}</span>
                   </div>
                   {groupTasks.map((t) => (
-                    <div className="done-item" key={t.id}>
+                    <div className="done-item clickable-row" key={t.id} onClick={openOnRowClick(() => setEditingTask(t))}>
                       <Icon name="check" size={14} />
-                      <span>{t.name}</span>
+                      <span role="button" tabIndex={0} onKeyDown={openOnKey(() => setEditingTask(t))}>
+                        {t.name}
+                      </span>
                       {t.goal_id && <span className="done-item-goal">{goalName(t.goal_id)}</span>}
                     </div>
                   ))}
@@ -370,18 +373,23 @@ export default function ReviewPage() {
                 Needs a decision
                 <span className="task-group-count">{overdue.length}</span>
               </h2>
-              <p className="today-hint">Overdue tasks: give each a realistic new date, or take the date off.</p>
+              <p className="today-hint">Overdue tasks: click a date to give it a realistic new one, or take the date off.</p>
               {overdue.map((t) => (
-                <div className="task-row today-row" key={t.id}>
+                <div className="task-row today-row clickable-row" key={t.id} onClick={openOnRowClick(() => setEditingTask(t))}>
                   <div className="task-main">
-                    <span className="task-name">{t.name}</span>
-                    <span className="due-date overdue review-overdue-date">Was due {inSentence(friendlyDate(t.due_date))}</span>
-                  </div>
-                  <div className="today-row-actions always">
-                    <button className="ghost small-btn" onClick={() => moveTo(t, today)}>Today</button>
-                    <button className="ghost small-btn" onClick={() => moveTo(t, shiftDays(today, 1))}>Tomorrow</button>
-                    <button className="ghost small-btn" onClick={() => moveTo(t, shiftDays(today, 7))}>Next week</button>
-                    <button className="ghost small-btn" onClick={() => moveTo(t, null)}>No date</button>
+                    <span className="task-name" role="button" tabIndex={0} onKeyDown={openOnKey(() => setEditingTask(t))}>
+                      {t.name}
+                    </span>
+                    <span className="task-meta">
+                      <DueDateMenu
+                        dueDate={t.due_date}
+                        className="meta-item due-date overdue"
+                        onPick={(date) => moveTo(t, date)}
+                      >
+                        <Icon name="calendar" size={13} />
+                        Was due {inSentence(friendlyDate(t.due_date))}
+                      </DueDateMenu>
+                    </span>
                   </div>
                 </div>
               ))}
@@ -389,6 +397,13 @@ export default function ReviewPage() {
           )}
         </div>
       )}
+      <TaskEditModal
+        task={editingTask}
+        tasks={tasks}
+        goals={goals}
+        onClose={() => setEditingTask(null)}
+        onSaved={loadData}
+      />
     </div>
   );
 }
