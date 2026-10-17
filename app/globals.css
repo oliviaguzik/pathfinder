@@ -2381,3 +2381,8 @@ button.popover-bare-trigger:hover, button.popover-bare-trigger[aria-expanded="tr
 .tour-body { margin: 0; font-size: 13.5px; line-height: 1.5; color: var(--muted); }
 .tour-actions { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 14px; }
 .tour-actions-right { display: flex; gap: 6px; }
+
+/* Repeating events: "Delete this one" / "Delete all" in the event dialog. */
+.event-delete-choices { display: flex; flex-wrap: wrap; gap: 6px; margin-right: auto; }
+button.danger-text { color: var(--danger); }
+button.danger-text:hover { color: var(--danger); background: color-mix(in srgb, var(--danger) 10%, transparent); }

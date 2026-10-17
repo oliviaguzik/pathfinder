@@ -117,6 +117,16 @@ answers "what matters today?" and leaves adding/planning to Tasks.
   Oct 19"), events first then open tasks; finished tasks are left out.
   "No date" (open tasks only) sits below it with less of the height.
   The × on side-panel rows appears on hover
+- Repeating events (migration `2026-10-17-repeating-events.sql`): the event
+  form's "Recurring" + Repeats (Daily / Weekly / Monthly / every N days) +
+  optional "Until"; the date field reads "First date". Each series is one
+  row; `occurrencesBetween` in `lib/events.js` expands it onto its days for
+  Today, the Plan list / side panel (next two weeks) and every calendar view
+  (monthly repeats skip months without that day). Rows show "↻ Every week".
+  Editing a repeat edits the whole series. The × on a repeat, or "Delete this
+  one" in the dialog, skips just that day (`skip_dates`); "Delete all" deletes
+  the series; both with Undo (`lib/eventActions.js`). One-off events never
+  send the repeat columns, so they keep working before the migration is run
 - Today shows events inside its one Today card; events count in the
   summary line
 

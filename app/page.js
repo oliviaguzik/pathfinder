@@ -9,11 +9,11 @@ import EventModal from "./components/EventModal";
 import EventRow from "./components/EventRow";
 import TaskEditModal from "./components/TaskEditModal";
 import PageTour from "./components/PageTour";
-import { eventTimeLabel, sortEvents } from "../lib/events";
+import { eventTimeLabel, occurrencesBetween, sortEvents } from "../lib/events";
 import { deleteTaskAndSync, restoreTask, toggleTaskDone, undoTaskDone } from "../lib/taskActions";
 import { notifyUndo } from "../lib/notify";
 import { openOnKey, openOnRowClick } from "../lib/rowClick";
-import { deleteEvent, restoreEvent } from "../lib/eventActions";
+import { removeEventWithUndo } from "../lib/eventActions";
 import { todayLocalISODate } from "../lib/dates";
 import { useAuth } from "../lib/AuthProvider";
 
@@ -39,6 +39,7 @@ export default function TodayPage() {
   const { user } = useAuth();
   const [tasks, setTasks] = useState([]);
   const [goals, setGoals] = useState([]);
+  // Events up to today (a repeating one may have started earlier); see todaysEvents.
   const [events, setEvents] = useState([]);
   // The event dialog: { event } to edit one, { date } to add one today.
   const [eventDialog, setEventDialog] = useState(null);
@@ -56,12 +57,12 @@ export default function TodayPage() {
     const [{ data: taskData }, { data: goalData }, { data: eventData }] = await Promise.all([
       supabase.from("tasks").select("*"),
       supabase.from("goals").select("*"),
-      supabase.from("events").select("*").eq("date", todayLocalISODate()),
+      supabase.from("events").select("*").lte("date", todayLocalISODate()),
     ]);
     if (version !== dataVersion.current) return;
     setTasks(taskData || []);
     setGoals(goalData || []);
-    setEvents(sortEvents(eventData || []));
+    setEvents(eventData || []);
     setLoading(false);
   }
 
@@ -159,20 +160,11 @@ export default function TodayPage() {
     loadData();
   }
 
-  async function removeEvent(ev) {
-    dataVersion.current++;
-    setEvents((list) => list.filter((e) => e.id !== ev.id));
-    const deleting = deleteEvent(ev);
-    notifyUndo(`Deleted: ${ev.title}`, async () => {
-      dataVersion.current++;
-      setEvents((list) => sortEvents([...list, ev]));
-      await deleting;
-      await restoreEvent(ev);
-      loadData();
-    });
-    await deleting;
-    loadData();
+  // A repeating event shown today loses just today; see lib/eventActions.
+  function removeEvent(ev) {
+    return removeEventWithUndo(ev, { setEvents, bump: () => dataVersion.current++, reload: loadData });
   }
+
 
   async function setFocus(task, on) {
     patchTask(task.id, { focus_date: on ? today : null });
@@ -246,6 +238,9 @@ export default function TodayPage() {
     );
   }
 
+  // Today's events, repeats included, by time.
+  const todaysEvents = sortEvents(occurrencesBetween(events, today, today));
+
   // Timed events that have already ended fade out.
   const nowTime = `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
   const isPast = (ev) => !ev.all_day && (ev.end_time || ev.start_time || "").slice(0, 5) <= nowTime;
@@ -255,7 +250,7 @@ export default function TodayPage() {
     openDue.length === 0
       ? ["Nothing due today"]
       : [dueTodayCount > 0 && `${dueTodayCount} due today`, overdueCount > 0 && `${overdueCount} overdue`].filter(Boolean);
-  if (events.length > 0) summary.push(`${events.length} event${events.length === 1 ? "" : "s"}`);
+  if (todaysEvents.length > 0) summary.push(`${todaysEvents.length} event${todaysEvents.length === 1 ? "" : "s"}`);
 
   return (
     <div className="today-page">
@@ -342,9 +337,9 @@ export default function TodayPage() {
               </div>
             )}
 
-            {(events.length > 0 || todayList.length > 0) && (
+            {(todaysEvents.length > 0 || todayList.length > 0) && (
               <div className="today-list">
-                {events.map((ev) => (
+                {todaysEvents.map((ev) => (
                   <EventRow
                     key={ev.id}
                     event={ev}
@@ -358,7 +353,7 @@ export default function TodayPage() {
               </div>
             )}
 
-            {focus.length === 0 && events.length === 0 && todayList.length === 0 && (
+            {focus.length === 0 && todaysEvents.length === 0 && todayList.length === 0 && (
               <p className="today-hint today-clear">Nothing on today. Enjoy the clear day, or look ahead in Plan.</p>
             )}
           </section>

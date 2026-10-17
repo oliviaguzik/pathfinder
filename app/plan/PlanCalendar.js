@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import Icon from "../components/Icon";
 import Modal from "../components/Modal";
 import Skeleton from "../components/Skeleton";
-import { sortEvents } from "../../lib/events";
+import { occurrencesBetween, sortEvents } from "../../lib/events";
 import { getMonthGrid, getWeekDays, isSameDay, parseLocalDate, toISODateLocal, weekLabel } from "../../lib/dates";
 import { EMPTY_TASK_FORM, taskFieldsFromForm } from "../../lib/taskForm";
 import { sortDoneLast } from "../../lib/taskSort";
@@ -97,8 +97,13 @@ export default function PlanCalendar({ agenda, visibleTasks, dialogOpen }) {
     (tasksByDate[t.due_date] ||= []).push(t);
   }
   for (const key of Object.keys(tasksByDate)) tasksByDate[key] = sortDoneLast(tasksByDate[key]);
+  // Events on the days the grid shows (whole weeks around the month, which also
+  // covers the Week and Day views), with repeats expanded onto their days.
+  const grid = getMonthGrid(calendarDate.getFullYear(), calendarDate.getMonth());
   const eventsByDate = {};
-  for (const ev of sortEvents(events)) (eventsByDate[ev.date] ||= []).push(ev);
+  for (const ev of sortEvents(occurrencesBetween(events, toISODateLocal(grid[0].date), toISODateLocal(grid.at(-1).date)))) {
+    (eventsByDate[ev.date] ||= []).push(ev);
+  }
 
   const today = new Date();
   const weekDays = getWeekDays(calendarDate);
@@ -188,7 +193,7 @@ export default function PlanCalendar({ agenda, visibleTasks, dialogOpen }) {
               {WEEKDAY_LABELS.map((w) => (
                 <div className="calendar-weekday" key={w}>{w}</div>
               ))}
-              {getMonthGrid(calendarDate.getFullYear(), calendarDate.getMonth()).map(({ date, outside }) => {
+              {grid.map(({ date, outside }) => {
                 const cellDate = toISODateLocal(date);
                 // Events first, then tasks; past the limit, the last slot says "+N more".
                 const items = [

@@ -52,6 +52,12 @@ create table events (
   end_time time,
   location text,
   notes text,
+  -- Repeating: every `recurrence_interval` days / weeks / months (null = once),
+  -- optionally until a date, minus any skipped dates.
+  recurrence_unit text check (recurrence_unit in ('day', 'week', 'month')),
+  recurrence_interval integer not null default 1 check (recurrence_interval >= 1),
+  repeat_until date,
+  skip_dates date[] not null default '{}',
   user_id uuid not null default auth.uid() references auth.users(id) on delete cascade,
   created_at timestamp with time zone default now(),
   constraint events_time_check check (all_day or start_time is not null),

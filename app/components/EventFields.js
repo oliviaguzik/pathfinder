@@ -1,5 +1,8 @@
 "use client";
 
+import Select from "./Select";
+import { RECURRENCE_PRESET_OPTIONS } from "../../lib/recurrence";
+
 // The fields shared by every add/edit event form. `form` is shaped like
 // EMPTY_EVENT_FORM (lib/events.js); `onChange` receives the changed keys.
 // Pass `showTitle={false}` when the caller renders the title input itself;
@@ -23,7 +26,7 @@ export default function EventFields({ form, onChange, idPrefix, showTitle = true
         </div>
       )}
       <div className="field">
-        <label htmlFor={id("date")}>Date</label>
+        <label htmlFor={id("date")}>{form.repeats ? "First date" : "Date"}</label>
         <input id={id("date")} type="date" value={form.date} onChange={(e) => onChange({ date: e.target.value })} />
         {dateHint && <span className="field-hint">{dateHint}</span>}
       </div>
@@ -46,6 +49,46 @@ export default function EventFields({ form, onChange, idPrefix, showTitle = true
           <div className="field">
             <label htmlFor={id("end")}>Ends</label>
             <input id={id("end")} type="time" value={form.endTime} onChange={(e) => onChange({ endTime: e.target.value })} />
+          </div>
+        </>
+      )}
+      <div className="field field-recurring">
+        <label htmlFor={id("recurring")}>Recurring</label>
+        <input
+          id={id("recurring")}
+          type="checkbox"
+          className="checkbox checkbox-square checkbox-event"
+          checked={!!form.repeats}
+          onChange={(e) => onChange({ repeats: e.target.checked })}
+        />
+      </div>
+      {form.repeats && (
+        <>
+          <div className="field field-repeats">
+            <label htmlFor={id("repeats")}>Repeats</label>
+            <Select
+              id={id("repeats")}
+              value={form.recurrencePreset}
+              onChange={(recurrencePreset) => onChange({ recurrencePreset })}
+              options={RECURRENCE_PRESET_OPTIONS}
+            />
+          </div>
+          {form.recurrencePreset === "custom" && (
+            <div className="field">
+              <label htmlFor={id("repeats-days")}>Every N days</label>
+              <input
+                id={id("repeats-days")}
+                type="number"
+                min="1"
+                value={form.recurrenceCustomDays}
+                onChange={(e) => onChange({ recurrenceCustomDays: e.target.value })}
+              />
+            </div>
+          )}
+          <div className="field">
+            <label htmlFor={id("until")}>Until</label>
+            <input id={id("until")} type="date" value={form.repeatUntil} min={form.date} onChange={(e) => onChange({ repeatUntil: e.target.value })} />
+            <span className="field-hint">Optional</span>
           </div>
         </>
       )}

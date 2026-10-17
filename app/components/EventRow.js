@@ -2,6 +2,7 @@
 
 import Icon from "./Icon";
 import { openOnKey, openOnRowClick } from "../../lib/rowClick";
+import { repeatLabel } from "../../lib/events";
 
 // An event in a list of tasks: shaped like a task row so they line up, but
 // with a teal clock where the checkbox would be. Click the row to open it;
@@ -19,6 +20,12 @@ export default function EventRow({ event, when, past = false, onOpen, onDelete }
         <span className="task-meta">
           <span className="meta-item list-event-when">{when}</span>
           {event.location && <span className="meta-item">{event.location}</span>}
+          {event.recurrence_unit && (
+            <span className="meta-item" title="Repeats">
+              <Icon name="repeat" size={12} />
+              {repeatLabel(event)}
+            </span>
+          )}
         </span>
       </span>
       <div className="task-actions">

@@ -6,7 +6,9 @@ import Modal from "../components/Modal";
 import Icon from "../components/Icon";
 import TaskEditModal from "../components/TaskEditModal";
 import PageTour from "../components/PageTour";
-import { buildAgenda, groupTasksByDue } from "../../lib/taskGroups";
+import { EVENT_LOOKAHEAD_DAYS, buildAgenda, groupTasksByDue } from "../../lib/taskGroups";
+import { occurrencesBetween } from "../../lib/events";
+import { toISODateLocal } from "../../lib/dates";
 import { sortTasksList } from "../../lib/taskSort";
 import { PlanContext } from "./PlanContext";
 import { usePlanData } from "./usePlanData";
@@ -54,8 +56,15 @@ export default function PlanPage() {
   // Overdue, then each day with its events (next two weeks) and open tasks, in
   // the chosen sort order within a day. Filters are about tasks, so events
   // step aside while any filter is on.
-  const agenda = buildAgenda(sortedTasks, filtersOn ? [] : data.events);
-  const hiddenEventCount = filtersOn ? buildAgenda([], data.events).reduce((n, day) => n + day.events.length, 0) : 0;
+  // Repeating events count once per day they happen in the next two weeks.
+  const now = new Date();
+  const upcomingEvents = occurrencesBetween(
+    data.events,
+    toISODateLocal(now),
+    toISODateLocal(new Date(now.getFullYear(), now.getMonth(), now.getDate() + EVENT_LOOKAHEAD_DAYS))
+  );
+  const agenda = buildAgenda(sortedTasks, filtersOn ? [] : upcomingEvents);
+  const hiddenEventCount = filtersOn ? upcomingEvents.length : 0;
 
   const plan = {
     ...data,

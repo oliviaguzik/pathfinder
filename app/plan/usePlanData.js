@@ -6,7 +6,7 @@ import { useAuth } from "../../lib/AuthProvider";
 import { notifyUndo } from "../../lib/notify";
 import { nextPosition } from "../../lib/reorder";
 import { deleteTaskAndSync, restoreTask, toggleTaskDone, undoTaskDone } from "../../lib/taskActions";
-import { deleteEvent, restoreEvent } from "../../lib/eventActions";
+import { removeEventWithUndo } from "../../lib/eventActions";
 
 // The Plan page's data (tasks, goals, events) and every change to it.
 // Changes show on screen first, then save; the reload afterwards brings in
@@ -123,19 +123,9 @@ export function usePlanData() {
     loadData();
   }
 
-  async function removeEvent(ev) {
-    dataVersion.current++;
-    setEvents((list) => list.filter((e) => e.id !== ev.id));
-    const deleting = deleteEvent(ev);
-    notifyUndo(`Deleted: ${ev.title}`, async () => {
-      dataVersion.current++;
-      setEvents((list) => [...list, ev]);
-      await deleting;
-      await restoreEvent(ev);
-      loadData();
-    });
-    await deleting;
-    loadData();
+  // A repeating event shown on a day loses just that day; see lib/eventActions.
+  function removeEvent(ev) {
+    return removeEventWithUndo(ev, { setEvents, bump: () => dataVersion.current++, reload: loadData });
   }
 
   async function moveTaskToDate(taskId, dueDateStr) {
