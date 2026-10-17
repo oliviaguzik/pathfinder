@@ -2351,12 +2351,7 @@ button.quick-add-parsed-ignore { padding: 2px 6px; font-size: 14px; color: var(-
 /* The ⓘ in the Add bar and its panel of examples. */
 button.popover-bare-trigger { color: var(--muted-soft); flex-shrink: 0; }
 button.popover-bare-trigger:hover, button.popover-bare-trigger[aria-expanded="true"] { color: var(--accent); }
-.typed-dates-help { width: min(300px, calc(100vw - 32px)); padding: 4px 2px; font-size: 13px; }
-.typed-dates-help-title { margin: 0 0 10px; font-weight: 650; }
-.typed-dates-help dl { display: grid; grid-template-columns: auto 1fr; gap: 6px 12px; margin: 0; }
-.typed-dates-help dt { color: var(--muted); font-size: 12px; padding-top: 1px; }
-.typed-dates-help dd { margin: 0; font-weight: 550; }
-.typed-dates-help-note { margin: 12px 0 0; font-size: 12.5px; color: var(--muted); line-height: 1.45; }
+.typed-dates-help { width: min(260px, calc(100vw - 32px)); margin: 0; padding: 2px; font-size: 13.5px; line-height: 1.5; }
 
 /* ---------- First-visit tours: the page dims except one part, with a bubble ---------- */
 .tour-layer { position: fixed; inset: 0; z-index: 1000; }

@@ -152,20 +152,9 @@ export default function AddBar({ inSheet = false, onAdded }) {
           inputClassName="quick-add-input"
         />
         <Popover bare ariaLabel="How to type dates and times" label={<Icon name="info" size={16} />}>
-          <div className="typed-dates-help">
-            <p className="typed-dates-help-title">Type dates and times in plain words</p>
-            <dl>
-              <dt>Days</dt>
-              <dd>tomorrow · fri · next monday</dd>
-              <dt>Dates</dt>
-              <dd>oct 20 · the 1st · in 2 weeks</dd>
-              <dt>Times (events)</dt>
-              <dd>7pm · 3-4pm · at noon</dd>
-            </dl>
-            <p className="typed-dates-help-note">
-              The words get highlighted and the date is filled in for you. Tap × under the box to keep them as plain text.
-            </p>
-          </div>
+          <p className="typed-dates-help">
+            Add a date by typing it, like “tomorrow”, “fri” or “oct 20”. For events, add a time: “7pm”.
+          </p>
         </Popover>
         {!inSheet && (
           <button type="button" className="ghost quick-add-options-btn" aria-expanded={expanded} onClick={() => setOptionsOpen((o) => !o)}>
