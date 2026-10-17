@@ -3,7 +3,9 @@
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 
-export default function Popover({ label, children, onClear, clearLabel = "Clear" }) {
+// A button that opens a small panel under it. `bare` shows just the label (e.g.
+// an icon) as a ghost button, with `ariaLabel` naming it.
+export default function Popover({ label, children, onClear, clearLabel = "Clear", bare = false, ariaLabel }) {
   const [open, setOpen] = useState(false);
   const [coords, setCoords] = useState({ top: 0, left: 0 });
   const triggerRef = useRef(null);
@@ -12,7 +14,9 @@ export default function Popover({ label, children, onClear, clearLabel = "Clear"
   function reposition() {
     if (!triggerRef.current) return;
     const rect = triggerRef.current.getBoundingClientRect();
-    setCoords({ top: rect.bottom + window.scrollY + 6, left: rect.left + window.scrollX });
+    // Keep a ~320px panel on screen when the button is near the right edge.
+    const left = Math.max(16, Math.min(rect.left, window.innerWidth - 336));
+    setCoords({ top: rect.bottom + window.scrollY + 6, left: left + window.scrollX });
   }
 
   function toggle() {
@@ -48,6 +52,36 @@ export default function Popover({ label, children, onClear, clearLabel = "Clear"
     };
   }, [open]);
 
+  const panel =
+    open &&
+    typeof document !== "undefined" &&
+    createPortal(
+      <div ref={panelRef} className="popover-panel" style={{ top: coords.top, left: coords.left }}>
+        {children}
+      </div>,
+      document.body
+    );
+
+  if (bare) {
+    return (
+      <>
+        <button
+          type="button"
+          ref={triggerRef}
+          className="ghost icon-btn popover-bare-trigger"
+          aria-haspopup="true"
+          aria-expanded={open}
+          aria-label={ariaLabel}
+          title={ariaLabel}
+          onClick={toggle}
+        >
+          {label}
+        </button>
+        {panel}
+      </>
+    );
+  }
+
   return (
     <>
       <div className="trigger-with-clear">
@@ -76,14 +110,7 @@ export default function Popover({ label, children, onClear, clearLabel = "Clear"
           </button>
         )}
       </div>
-      {open &&
-        typeof document !== "undefined" &&
-        createPortal(
-          <div ref={panelRef} className="popover-panel" style={{ top: coords.top, left: coords.left }}>
-            {children}
-          </div>,
-          document.body
-        )}
+      {panel}
     </>
   );
 }

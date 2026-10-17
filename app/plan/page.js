@@ -5,6 +5,7 @@ import EventModal from "../components/EventModal";
 import Modal from "../components/Modal";
 import Icon from "../components/Icon";
 import TaskEditModal from "../components/TaskEditModal";
+import PageTour from "../components/PageTour";
 import { buildAgenda, groupTasksByDue } from "../../lib/taskGroups";
 import { sortTasksList } from "../../lib/taskSort";
 import { PlanContext } from "./PlanContext";
@@ -101,6 +102,7 @@ export default function PlanPage() {
           <PlanCalendar agenda={agenda} visibleTasks={visibleTasks} dialogOpen={!!editingTask || !!eventDialog} />
         )}
 
+        <PageTour id="plan" ready={!data.loading} />
         <TaskEditModal
           task={editingTask}
           tasks={data.tasks}

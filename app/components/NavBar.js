@@ -5,6 +5,7 @@ import ThemeToggle, { applyTheme } from "./ThemeToggle";
 import Menu from "./Menu";
 import Icon from "./Icon";
 import { useAuth } from "../../lib/AuthProvider";
+import { resetTours } from "../../lib/tourState";
 
 const NAV_LINKS = [
   { href: "/", label: "Today", icon: "home" },
@@ -48,6 +49,9 @@ export default function NavBar() {
               </a>
             ))}
           </div>
+          <button className="ghost icon-btn" onClick={resetTours} aria-label="Show the tour again" title="Show the tour again">
+            <Icon name="help" size={16} />
+          </button>
           <ThemeToggle />
           {user && (
             <button className="ghost" onClick={signOut} title={user.email}>
@@ -60,6 +64,7 @@ export default function NavBar() {
             icon="menu"
             label="Menu"
             items={[
+              { label: "Show the tour again", onClick: resetTours },
               { label: "Switch light / dark", onClick: toggleTheme },
               ...(user ? [{ label: "Sign out", onClick: signOut }] : []),
             ]}

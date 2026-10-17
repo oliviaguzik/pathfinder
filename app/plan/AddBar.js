@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Icon from "../components/Icon";
 import HighlightInput from "../components/HighlightInput";
+import Popover from "../components/Popover";
 import TaskFields from "../components/TaskFields";
 import EventFields from "../components/EventFields";
 import { eventFieldsFromForm, formatTime, newEventForm } from "../../lib/events";
@@ -24,7 +25,6 @@ const EXAMPLES = {
   task: ["Call mom tomorrow", "Pay rent on the 1st", "Dentist fri", "Renew passport in 2 weeks", "Taxes oct 20"],
   event: ["Dinner friday 7pm", "Haircut tue 3-4pm", "Lunch tomorrow at noon", "Yoga next monday 6pm"],
 };
-const TIP_KEY = "typedDatesTipDone";
 
 // An hour after "HH:MM" (or "" past 11pm), for an event typed with only a start.
 function hourLater(time) {
@@ -47,21 +47,7 @@ export default function AddBar({ inSheet = false, onAdded }) {
   // The words the user chose not to read as a date (× on the preview).
   const [ignored, setIgnored] = useState("");
   const [exampleIndex, setExampleIndex] = useState(0);
-  // A one-time tip, until a typed date has been used (or the tip closed).
-  const [showTip, setShowTip] = useState(false);
 
-  useEffect(() => {
-    try {
-      setShowTip(localStorage.getItem(TIP_KEY) !== "yes");
-    } catch {}
-  }, []);
-
-  function tipDone() {
-    setShowTip(false);
-    try {
-      localStorage.setItem(TIP_KEY, "yes");
-    } catch {}
-  }
 
   const name = kind === "event" ? newEvent.title : newTask.name;
   const expanded = inSheet || optionsOpen || name.trim() !== "";
@@ -108,7 +94,6 @@ export default function AddBar({ inSheet = false, onAdded }) {
 
   async function submit(e) {
     e.preventDefault();
-    if (parsed && showTip) tipDone();
     if (kind === "event") {
       const { fields, error } = eventFieldsFromForm({ ...eventForm, title: parsed ? parsed.title : eventForm.title });
       if (error) return notifyWarning(error);
@@ -166,6 +151,22 @@ export default function AddBar({ inSheet = false, onAdded }) {
           }}
           inputClassName="quick-add-input"
         />
+        <Popover bare ariaLabel="How to type dates and times" label={<Icon name="info" size={16} />}>
+          <div className="typed-dates-help">
+            <p className="typed-dates-help-title">Type dates and times in plain words</p>
+            <dl>
+              <dt>Days</dt>
+              <dd>tomorrow · fri · next monday</dd>
+              <dt>Dates</dt>
+              <dd>oct 20 · the 1st · in 2 weeks</dd>
+              <dt>Times (events)</dt>
+              <dd>7pm · 3-4pm · at noon</dd>
+            </dl>
+            <p className="typed-dates-help-note">
+              The words get highlighted and the date is filled in for you. Tap × under the box to keep them as plain text.
+            </p>
+          </div>
+        </Popover>
         {!inSheet && (
           <button type="button" className="ghost quick-add-options-btn" aria-expanded={expanded} onClick={() => setOptionsOpen((o) => !o)}>
             {expanded ? "Fewer options" : "Options"}
@@ -190,17 +191,7 @@ export default function AddBar({ inSheet = false, onAdded }) {
           </button>
         </div>
       )}
-      {!parsed && showTip && (
-        <div className="quick-add-tip">
-          <span>
-            Tip: type {kind === "event" ? "a day and time like “fri 7pm”" : "a date like “tomorrow”, “fri” or “oct 20”"} and
-            it’s set for you.
-          </span>
-          <button type="button" className="ghost icon-btn quick-add-parsed-ignore" onClick={tipDone} aria-label="Hide this tip" title="Hide tip">
-            ×
-          </button>
-        </div>
-      )}
+
       {expanded && (
         <div className="quick-add-options">
           {kind === "event" ? (

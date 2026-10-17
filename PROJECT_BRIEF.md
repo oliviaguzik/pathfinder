@@ -87,10 +87,9 @@ answers "what matters today?" and leaves adding/planning to Tasks.
   in the box (`HighlightInput`: a copy of the text behind the box), and a line
   under it shows the result ("Due Fri, Oct 30") with × to keep the words in
   the name. To make the feature discoverable: the empty box cycles through
-  examples ("e.g. Pay rent on the 1st"), a one-time tip under the bar explains
-  it until a typed date is used or the tip is closed (localStorage
-  `typedDatesTipDone`), and the Options date field says "or type it in the
-  name, e.g. “next fri”". Goal cards' add box highlights the same way;
+  examples ("e.g. Pay rent on the 1st"), an ⓘ in the bar opens a short list of
+  what can be typed (days, dates, event times), and the Options date field says
+  "or type it in the name, e.g. “next fri”". Goal cards' add box highlights the same way;
   the words are taken out of the saved name. Changing the date in Options by
   hand wins. "sun"/"sat" alone aren't read as days ("sun cream").
   Parser: `parseQuickAdd` in `lib/parseQuickAdd.js` (tested)
@@ -185,6 +184,16 @@ the README for which file does what). Title "Plan", subtitle "Your tasks and eve
 - Quick motion: dialogs fade and rise, Options and Completed slide open,
   rows ease in; all off when the device asks for reduced motion
 - Dialog buttons are Delete (left) · Cancel · Save (primary last)
+
+**First-visit tours**
+- Each page (Today, Plan, Goals, Review) runs a short spotlight tour the
+  first time it's opened: the page dims except one part, with a bubble
+  (n of N, Skip tour / Back / Next, "Got it" at the end; Escape skips, arrow
+  keys step). Steps are in `app/components/tours.js` (CSS targets; a step whose
+  target isn't on screen is skipped; `phoneBody` for phone wording); the engine
+  is `PageTour`. "Seen" is kept on the account (Supabase user metadata
+  `tours_seen`, no table needed) and in localStorage (`lib/tourState.js`).
+  "Show the tour again": ? button in the top bar (wide) or the ☰ menu (phones)
 
 **Shared**
 - Google auth end-to-end (sign in, session persistence, sign out)

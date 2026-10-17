@@ -8,6 +8,7 @@ import TaskMeta from "./components/TaskMeta";
 import EventModal from "./components/EventModal";
 import EventRow from "./components/EventRow";
 import TaskEditModal from "./components/TaskEditModal";
+import PageTour from "./components/PageTour";
 import { eventTimeLabel, sortEvents } from "../lib/events";
 import { deleteTaskAndSync, restoreTask, toggleTaskDone, undoTaskDone } from "../lib/taskActions";
 import { notifyUndo } from "../lib/notify";
@@ -363,6 +364,7 @@ export default function TodayPage() {
           </section>
         </>
       )}
+      <PageTour id="today" ready={!loading} />
       <TaskEditModal
         task={editingTask}
         tasks={tasks}

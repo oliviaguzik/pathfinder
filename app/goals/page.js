@@ -8,6 +8,7 @@ import Celebration from "../components/Celebration";
 import Skeleton from "../components/Skeleton";
 import Icon from "../components/Icon";
 import TaskEditModal from "../components/TaskEditModal";
+import PageTour from "../components/PageTour";
 import QuickAddTask from "../components/QuickAddTask";
 import TaskMeta from "../components/TaskMeta";
 import Menu from "../components/Menu";
@@ -743,6 +744,7 @@ export default function GoalsPage() {
 
   return (
     <div>
+      <PageTour id="goals" ready={!loading} />
       <TaskEditModal
         task={editingTask}
         tasks={tasks}
@@ -773,7 +775,7 @@ export default function GoalsPage() {
               <Icon name="list" size={15} />
             </button>
           </div>
-          <button className="primary" onClick={() => setAddOpen(true)}>+ Add goal</button>
+          <button className="primary add-goal-btn" onClick={() => setAddOpen(true)}>+ Add goal</button>
         </div>
       </div>
 

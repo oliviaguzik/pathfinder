@@ -7,6 +7,7 @@ import Icon from "../components/Icon";
 import CircularProgress from "../components/CircularProgress";
 import DueDateMenu from "../components/DueDateMenu";
 import TaskEditModal from "../components/TaskEditModal";
+import PageTour from "../components/PageTour";
 import { openOnKey, openOnRowClick } from "../../lib/rowClick";
 import { friendlyDate, getWeekDays, toISODateLocal, todayLocalISODate, weekLabel } from "../../lib/dates";
 import { getPeriod, goalsNeedingAttention, periodReport, shiftAnchor } from "../../lib/insights";
@@ -368,7 +369,7 @@ export default function ReviewPage() {
           </div>
 
           {isCurrent && overdue.length > 0 && (
-            <section className="card review-card">
+            <section className="card review-card review-decisions">
               <h2 className="review-card-title overdue">
                 Needs a decision
                 <span className="task-group-count">{overdue.length}</span>
@@ -397,6 +398,7 @@ export default function ReviewPage() {
           )}
         </div>
       )}
+      <PageTour id="review" ready={!loading} />
       <TaskEditModal
         task={editingTask}
         tasks={tasks}
