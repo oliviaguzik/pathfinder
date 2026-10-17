@@ -3,11 +3,11 @@
 import { useEffect, useState } from "react";
 import { notifyError, onNotify } from "../../lib/notify";
 
-const SHOW_MS = { error: 8000, warning: 4000 };
+const SHOW_MS = { error: 8000, warning: 4000, undo: 6000 };
 const OFFLINE_MESSAGE = "You're offline. Changes won't save until you reconnect.";
 
-// Shows errors (red) and warnings (amber) at the bottom of the screen, and
-// stays up while the browser is offline.
+// Shows errors (red), warnings (amber) and "… · Undo" notes at the bottom of
+// the screen, and stays up while the browser is offline.
 export default function ErrorToast() {
   const [toast, setToast] = useState(null);
 
@@ -38,6 +38,22 @@ export default function ErrorToast() {
   }, []);
 
   if (!toast) return null;
+  if (toast.kind === "undo") {
+    return (
+      <div className="app-toast undo" role="status">
+        <span className="app-toast-message">{toast.message}</span>
+        <button
+          className="ghost small-btn app-toast-undo"
+          onClick={() => {
+            setToast(null);
+            toast.onUndo();
+          }}
+        >
+          Undo
+        </button>
+      </div>
+    );
+  }
   return (
     <div className={`app-toast ${toast.kind}`} role={toast.kind === "error" ? "alert" : "status"}>
       <span className="app-toast-icon" aria-hidden="true">{toast.kind === "error" ? "!" : "i"}</span>

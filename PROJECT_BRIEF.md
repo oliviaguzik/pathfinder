@@ -46,8 +46,11 @@ answers "what matters today?" and leaves adding/planning to Tasks.
   already on the Today card it says so instead of repeating it
 - One "Today" card ("+ Event" in its header): Focus first (star up to 3
   tasks, `tasks.focus_date` = today), then today's events by time (teal
-  rows, ended ones fade) and the due tasks: overdue (oldest first, hover
-  for Today / Tomorrow) then due today. A one-line note when the day is empty
+  rows, ended ones fade) and the due tasks: overdue (oldest first) then due today. A one-line note when the day is empty
+- Rescheduling: wherever a task's date shows (overdue rows on Today and
+  Plan, the side panel's Overdue, Goals), the date is a button: click it for
+  a "Move to" menu with Today, Tomorrow, Next week (next Monday), Pick a
+  date…, and No date (`DueDateMenu`, `quickDates` in `lib/dates.js`)
 - Click a task's name to edit or delete it in a dialog (`TaskEditModal`,
   which shares save/delete with the Plan page via `saveTaskEdit` /
   `deleteTaskAndSync` in `lib/taskActions.js`)
@@ -105,8 +108,13 @@ here). Title "Plan", subtitle "Your tasks and events, all in one place."
 - Add task form: name, category, goal picker (when Goal-Related), priority,
   effort, due date, recurring toggle (daily/weekly/monthly presets or custom
   N-day interval)
-- Edit any task by clicking its name: the same "Edit task" dialog
-  (`TaskEditModal`) everywhere (list, calendar, day popup, Today); delete
+- Tasks and events work the same way everywhere (Today, Plan list, side
+  panel, day popup, calendar, Goals): click anywhere on the row to open it
+  (`openOnRowClick` in `lib/rowClick.js`; the checkbox, star and buttons
+  don't open it), and a × on hover deletes it with Undo. No pencil buttons.
+  Tasks open the "Edit task" dialog (`TaskEditModal`), events the event
+  dialog; events in task lists use the shared `EventRow`. Calendar grid
+  chips open on click but have no × (too small); delete
 - Filters: category, status, priority, effort (via a popover panel with a
   badge count and "clear all")
 - Sort: due date, priority, effort, newest, oldest, or custom drag order
@@ -140,9 +148,25 @@ here). Title "Plan", subtitle "Your tasks and events, all in one place."
   overrides
 - Grid view and list view (toggle persisted to localStorage); list view rows
   expand/collapse to show the task checklist
-- Inline add/edit task forms scoped to a goal (same fields as the Plan page,
-  including recurrence)
+- Inline "+ Add task" form scoped to a goal (same fields as the Plan page,
+  including recurrence); editing a goal's task opens the shared Edit task dialog
 - Drag-and-drop manual reordering of goals
+
+**Feel (Today, Plan, Goals)**
+- Changes show instantly and save in the background (`patchTask`); only
+  the first load shows placeholders. A `dataVersion` counter drops any
+  refresh that started before a newer change, so quick actions don't flicker
+- Ticking a task pops the circle green; the row stays a moment (`lingering`,
+  ~1.4s), fades, then moves to Completed (focus tasks on Today just stay)
+- Deleting a task or event happens at once, with a dark "Deleted: … · Undo"
+  note for 6 seconds (`notifyUndo` in `lib/notify.js`, shown by
+  `ErrorToast`); ticking a task shows "Done: … · Undo". Undo restores the
+  exact row (`restoreTask`) or reopens the task and removes the next
+  occurrence a recurring check-off created (`undoTaskDone`). No more
+  "click twice to delete" (goal deletion keeps its confirm panel)
+- Quick motion: dialogs fade and rise, Options and Completed slide open,
+  rows ease in; all off when the device asks for reduced motion
+- Dialog buttons are Delete (left) · Cancel · Save (primary last)
 
 **Shared**
 - Google auth end-to-end (sign in, session persistence, sign out)
@@ -169,8 +193,7 @@ Clean, modern, calm — closer to Things/Todoist than a form-based admin tool.
   with "Show more", and a link to Review for longer history
 - With a mouse, a row's buttons float over its right end on hover, so
   names use the full width
-- Click a task's name to edit it (list, calendar and day panel). Overdue
-  rows get "Today" / "Tomorrow" buttons on hover, as on the Today page
+- Overdue tasks are rescheduled by clicking their date (see Rescheduling)
 - Task rows show a small details line (friendly dates like "Tomorrow" /
   "Oct 19", goal, priority flag, effort, repeat); drag handles and
   edit/delete appear on hover
@@ -191,8 +214,7 @@ Clean, modern, calm — closer to Things/Todoist than a form-based admin tool.
 - Calendar has Month, Week and Day modes (remembered like the list/calendar
   toggle); clicking a day opens a panel with that day's tasks and a quick
   add for that date; busy month cells show "+N more"
-- Phones: overdue rows' Today / Tomorrow buttons move under the task and
-  stay visible; tapping a name edits (the pencil is hidden); the Add bar
+- Phones: tapping a row opens it; the Add bar
   puts the Task/Event switch and Options on top, text box and Add below;
   the top bar drops the "PathFinder" word so all tabs fit; calendar
   controls wrap so nothing scrolls sideways. Month cells show task names

@@ -810,7 +810,7 @@ button.danger:hover { background: #fdf2f2; border-color: var(--danger); }
   gap: 4px;
   min-width: 0;
   width: 100%;
-  cursor: grab;
+  cursor: pointer;
 }
 .calendar-task:active { cursor: grabbing; }
 .calendar-task .checkbox { width: 14px; height: 14px; border-width: 1.25px; }
@@ -1466,7 +1466,6 @@ button.small-btn:hover { color: var(--accent); }
 .today-win { margin: 10px 0 0; font-size: 13px; font-weight: 500; color: var(--success); }
 
 .today-row { padding: 10px 2px; }
-.today-row:hover { background: transparent; }
 .today-row-actions { display: flex; align-items: center; gap: 2px; margin-left: auto; flex-shrink: 0; }
 @media (hover: hover) {
   .today-row .focus-btn:not(.on) { opacity: 0; transition: opacity 0.15s; }
@@ -1851,7 +1850,7 @@ button.add-event-link:hover { color: var(--event); background: var(--event-soft)
 
 /* Events in the task list: a task-shaped row, teal, with a clock in the checkbox spot.
    The left padding skips the drag-handle column so titles line up with tasks. */
-button.task-row.list-event {
+.task-row.list-event {
   width: 100%;
   padding-left: 35px;
   border: none;
@@ -1862,8 +1861,8 @@ button.task-row.list-event {
   text-align: left;
   transform: none;
 }
-button.task-row.list-event:last-child { border-bottom: none; }
-button.task-row.list-event:hover { background: color-mix(in srgb, var(--event-fill) 60%, transparent); }
+.task-row.list-event:last-child { border-bottom: none; }
+
 .list-event-icon {
   display: inline-grid;
   place-content: center;
@@ -1885,23 +1884,14 @@ button.task-row.list-event:hover { background: color-mix(in srgb, var(--event-fi
 }
 .agenda-day.overdue .agenda-day-label { color: var(--danger); }
 .agenda-day .undated-task-row { padding: 6px 0; }
-button.agenda-event {
-  display: flex;
+.undated-task-row.agenda-event {
   align-items: center;
   gap: 6px;
-  width: 100%;
-  margin: 0;
-  padding: 7px 0;
-  border: none;
-  border-radius: 6px;
-  background: transparent;
   color: var(--event-fill-ink);
   font-size: 12.5px;
-  text-align: left;
 }
-button.agenda-event:hover { background: color-mix(in srgb, var(--event-fill) 60%, transparent); }
-button.agenda-event svg { color: var(--event); }
-button.agenda-event svg { flex-shrink: 0; }
+.agenda-event > svg { flex-shrink: 0; color: var(--event); }
+.agenda-event .agenda-event-title { flex: 1; }
 .agenda-event-time { flex-shrink: 0; font-weight: 700; }
 .agenda-event-title { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text); font-weight: 500; }
 
@@ -1942,7 +1932,7 @@ button.agenda-event svg { flex-shrink: 0; }
 .today-focus-block + .today-list { margin-top: 6px; padding-top: 8px; border-top: 1px solid var(--border-soft); }
 .today-clear { margin: 4px 0 2px; }
 /* Today's events: same teal row as in the task list, nudged so the clock lines up with the checkboxes. */
-.today-card button.task-row.list-event {
+.today-card .task-row.list-event {
   width: calc(100% + 12px);
   margin: 0 -6px;
   padding: 10px 8px;
@@ -1971,29 +1961,9 @@ button.agenda-event svg { flex-shrink: 0; }
 }
 .list-note svg { color: var(--event); flex-shrink: 0; }
 
-/* "Today / Tomorrow" on overdue rows. On wide screens they sit at the end of the
-   row and appear on hover; on phones they move under the task, always shown. */
-.reschedule { display: flex; align-items: center; gap: 2px; flex-shrink: 0; margin-left: auto; }
-.reschedule + .task-actions, .reschedule + .today-row-actions { margin-left: 0; }
-@media (hover: hover) {
-  .task-row .reschedule { opacity: 0; transition: opacity 0.15s; }
-  .task-row:hover .reschedule,
-  .task-row:focus-within .reschedule { opacity: 1; }
-}
+/* Phones: names take the room they need beside the checkbox. */
 @media (max-width: 600px) {
-  .task-row { flex-wrap: wrap; row-gap: 0; }
   .task-row .task-main { flex: 1 1 0; }
-  .task-row .reschedule {
-    order: 3;
-    flex-basis: 100%;
-    margin: 2px 0 -4px;
-    padding-left: 22px;
-    opacity: 1;
-  }
-  .task-list-card .task-row .reschedule { padding-left: 47px; }
-  .task-row .reschedule .small-btn { padding: 4px 8px; }
-  /* Tapping a task's name edits it, so the pencil can go. */
-  .task-row .task-actions [aria-label="Edit task"] { display: none; }
 }
 
 /* Phones: a tighter top bar so every tab fits. */
@@ -2030,7 +2000,7 @@ button.agenda-event svg { flex-shrink: 0; }
 .plan-empty { margin: 4px 10px 6px; font-size: 13px; color: var(--muted); }
 /* Rows breathe instead of sitting between lines. */
 .plan-columns .task-row,
-.plan-columns button.task-row.list-event { border-bottom: none; padding-top: 9px; padding-bottom: 9px; }
+.plan-columns .task-row.list-event { border-bottom: none; padding-top: 9px; padding-bottom: 9px; }
 .plan-columns .list-note { margin-left: 10px; }
 
 .plan-day { border-radius: var(--radius-sm); padding-bottom: 2px; transition: background 0.15s, box-shadow 0.15s; }
@@ -2053,16 +2023,14 @@ button.agenda-event svg { flex-shrink: 0; }
 @media (max-width: 600px) {
   .plan-columns .drag-handle { display: none; }
   .plan-day-label { padding-left: 10px; }
-  .plan-columns button.task-row.list-event { padding-left: 10px; }
+  .plan-columns .task-row.list-event { padding-left: 10px; }
   .plan-columns .task-list-card .task-group-header { padding-left: 10px; }
-  .plan-columns .task-list-card .task-row .reschedule { padding-left: 30px; }
 }
 /* With a mouse, row buttons float over the end of the row on hover, so names
    use the full width instead of leaving room for hidden buttons. */
 @media (hover: hover) and (min-width: 601px) {
   .plan-columns .task-row { position: relative; }
-  .plan-columns .task-row .task-actions,
-  .plan-columns .task-row .reschedule {
+  .plan-columns .task-row .task-actions {
     position: absolute;
     top: 50%;
     transform: translateY(-50%);
@@ -2071,14 +2039,137 @@ button.agenda-event svg { flex-shrink: 0; }
     box-shadow: -14px 0 12px var(--surface);
   }
   .plan-columns .task-row .task-actions { right: 6px; }
-  .plan-columns .task-row .reschedule { right: 72px; box-shadow: none; padding-left: 0; }
-  .plan-columns .task-row .reschedule ~ .task-actions { box-shadow: none; }
   .plan-columns .task-row:hover .task-actions,
   .plan-columns .task-row:focus-within .task-actions { background: var(--surface-sunken); box-shadow: -14px 0 12px var(--surface-sunken); }
-  .plan-columns .task-row:hover .reschedule,
-  .plan-columns .task-row:focus-within .reschedule { background: var(--surface-sunken); box-shadow: -14px 0 12px var(--surface-sunken); }
-  .plan-columns .task-row:hover .reschedule ~ .task-actions { box-shadow: none; }
 }
 
 /* Day popup / Day view: no drag handles, so events start where the checkboxes do. */
-.day-panel button.task-row.list-event { padding: 10px 2px; border-bottom: 1px solid var(--border-soft); }
+.day-panel .task-row.list-event { padding: 10px 2px; border-bottom: 1px solid var(--border-soft); }
+
+/* ---------- Feel: quick, quiet motion ---------- */
+
+/* A ticked task: the circle pops green, then the row fades and folds away
+   (it moves to Completed once the linger ends). */
+.task-row.just-done .checkbox:checked { animation: check-pop 0.32s ease-out; }
+.task-row.leaving { animation: row-leave 0.45s ease-in 0.9s forwards; }
+.task-name { transition: color 0.2s; }
+@keyframes check-pop {
+  0% { transform: scale(0.8); box-shadow: 0 0 0 0 color-mix(in srgb, var(--success) 45%, transparent); }
+  55% { transform: scale(1.18); }
+  100% { transform: scale(1); box-shadow: 0 0 0 8px transparent; }
+}
+@keyframes row-leave {
+  to { opacity: 0; transform: translateX(6px); }
+}
+
+/* Rows ease in when they appear (first load, or after moving to another day). */
+.plan-columns .task-row,
+.today-card .task-row,
+.day-panel .task-row { animation: row-in 0.22s ease-out; }
+@keyframes row-in {
+  from { opacity: 0; transform: translateY(3px); }
+  to { opacity: 1; transform: none; }
+}
+
+/* Dialogs fade in and rise slightly. */
+.modal-backdrop { animation: fade-in 0.16s ease-out; }
+.modal { animation: modal-in 0.2s cubic-bezier(0.2, 0.8, 0.3, 1); }
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes modal-in {
+  from { opacity: 0; transform: translateY(10px) scale(0.98); }
+  to { opacity: 1; transform: none; }
+}
+
+/* Panels that open (Add bar options, Completed) slide down a touch. */
+.quick-add-options,
+.task-group-completed .completed-subhead,
+.task-group-completed .completed-footer { animation: slide-down 0.2s ease-out; }
+@keyframes slide-down {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: none; }
+}
+
+/* Undo note: dark pill with an Undo link, so it reads as "something happened". */
+.app-toast.undo {
+  gap: 14px;
+  padding: 8px 8px 8px 16px;
+  background: var(--text);
+  border-color: transparent;
+  color: var(--surface);
+}
+.app-toast-message { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 380px; }
+.app-toast.undo button.app-toast-undo { color: color-mix(in srgb, var(--accent) 55%, var(--surface)); font-weight: 650; font-size: 13.5px; }
+.app-toast.undo button.app-toast-undo:hover { background: color-mix(in srgb, var(--surface) 14%, transparent); color: var(--surface); }
+
+/* Buttons respond to a press. */
+button:active:not(:disabled) { transform: translateY(0.5px); }
+
+@media (prefers-reduced-motion: reduce) {
+  .task-row.leaving { animation: none !important; }
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-delay: 0ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* Clickable rows (tasks and events alike): click anywhere to open. Tasks get
+   a grey hover, events a teal one; × appears on hover. */
+.clickable-row { cursor: pointer; }
+.task-row.clickable-row:hover,
+.undated-task-row.clickable-row:hover { background: var(--surface-sunken); }
+.task-row.list-event.clickable-row:hover,
+.undated-task-row.agenda-event.clickable-row:hover { background: color-mix(in srgb, var(--event-fill) 60%, transparent); }
+.undated-task-row.clickable-row { border-radius: 6px; margin: 0 -4px; padding-left: 4px; padding-right: 4px; }
+.clickable-row [role="button"]:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--accent-soft); border-radius: 4px; }
+.calendar-week-task.clickable-row:hover { background: var(--surface-sunken); }
+.today-card .task-row.clickable-row:not(.list-event) { margin: 0 -6px; padding-left: 8px; padding-right: 8px; }
+@media (hover: hover) and (min-width: 601px) {
+  .plan-columns .task-row.list-event:hover .task-actions {
+    background: color-mix(in srgb, var(--event-fill) 60%, var(--surface));
+    box-shadow: -14px 0 12px color-mix(in srgb, var(--event-fill) 60%, var(--surface));
+  }
+}
+
+/* A task's date is a button: click it for a "Move to" menu (Today, Tomorrow,
+   Next week, a picked date, No date). Looks like the date until you point at it. */
+button.due-menu-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin: -2px -6px;
+  padding: 2px 6px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  font: inherit;
+  font-size: inherit;
+  color: inherit;
+}
+button.due-menu-trigger.due-date.overdue { color: var(--danger); }
+button.due-menu-trigger.due-date.today { color: var(--warning); }
+button.due-menu-trigger > svg:last-child { opacity: 0.55; transition: opacity 0.15s; }
+button.due-menu-trigger:hover { background: var(--surface-sunken); transform: none; }
+.task-row.clickable-row:hover button.due-menu-trigger:hover { background: var(--border-soft); }
+button.due-menu-trigger:hover > svg:last-child,
+button.due-menu-trigger[aria-expanded="true"] > svg:last-child { opacity: 1; }
+.upcoming-task-due { margin-top: 2px; font-size: 12.5px; }
+
+.menu-panel.due-menu { transform: none; min-width: 200px; animation: slide-down 0.14s ease-out; }
+.due-menu-title { padding: 6px 10px 4px; font-size: 12px; font-weight: 650; color: var(--muted); }
+.due-menu .menu-item { display: flex; align-items: center; justify-content: space-between; gap: 12px; cursor: pointer; }
+.due-menu-hint { font-size: 12px; color: var(--muted); }
+.due-menu-pick { position: relative; }
+/* The native date picker sits invisibly over "Pick a date…", so a click opens it. */
+.due-menu-pick input[type="date"] {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  cursor: pointer;
+}
+.due-menu-pick input[type="date"]::-webkit-calendar-picker-indicator { position: absolute; inset: 0; width: 100%; height: 100%; cursor: pointer; }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { supabase } from "../../lib/supabaseClient";
 import CircularProgress from "../components/CircularProgress";
 import Modal from "../components/Modal";
@@ -8,15 +8,17 @@ import Celebration from "../components/Celebration";
 import Skeleton from "../components/Skeleton";
 import Icon from "../components/Icon";
 import TaskFields from "../components/TaskFields";
+import TaskEditModal from "../components/TaskEditModal";
 import TaskMeta from "../components/TaskMeta";
 import Menu from "../components/Menu";
-import { toggleTaskDone } from "../../lib/taskActions";
-import { goalStatusFor, isGoalFullyDone, syncGoalStatuses } from "../../lib/goalCompletion";
+import { deleteTaskAndSync, restoreTask, toggleTaskDone, undoTaskDone } from "../../lib/taskActions";
+import { goalStatusFor, isGoalFullyDone } from "../../lib/goalCompletion";
 import { positionBetween, nextPosition, sortByPosition } from "../../lib/reorder";
 import { parseLocalDate, toISODateLocal, todayLocalISODate } from "../../lib/dates";
-import { EMPTY_TASK_FORM, taskFormFromTask, taskFieldsFromForm } from "../../lib/taskForm";
+import { EMPTY_TASK_FORM, taskFieldsFromForm } from "../../lib/taskForm";
+import { openOnKey, openOnRowClick } from "../../lib/rowClick";
 import { useAuth } from "../../lib/AuthProvider";
-import { notifyWarning } from "../../lib/notify";
+import { notifyUndo, notifyWarning } from "../../lib/notify";
 
 const FINISHED_PAGE = 3;
 // More active goals than this and a gentle nudge suggests pausing some.
@@ -48,6 +50,10 @@ export default function GoalsPage() {
   const [goals, setGoals] = useState([]);
   const [tasks, setTasks] = useState([]);
   const [loading, setLoading] = useState(true);
+  // Each change bumps this, so a refresh that started before the change can't
+  // land afterwards and put back what was just changed.
+  const dataVersion = useRef(0);
+
 
   const [addOpen, setAddOpen] = useState(false);
   const [name, setName] = useState("");
@@ -66,10 +72,9 @@ export default function GoalsPage() {
   const [addTaskForId, setAddTaskForId] = useState(null);
   const [newTask, setNewTask] = useState(EMPTY_TASK_FORM);
 
-  const [editingTaskId, setEditingTaskId] = useState(null);
-  const [editTaskForm, setEditTaskForm] = useState(EMPTY_TASK_FORM);
+  // The task open in the edit dialog (the same dialog as on Today and Plan).
+  const [editingTask, setEditingTask] = useState(null);
 
-  const [confirmingDeleteTaskId, setConfirmingDeleteTaskId] = useState(null);
   const [draggedGoalId, setDraggedGoalId] = useState(null);
   const [dragOverGoalId, setDragOverGoalId] = useState(null);
 
@@ -107,12 +112,14 @@ export default function GoalsPage() {
     localStorage.setItem("goalsView", next);
   }
 
+  // Only the first load shows placeholders; later refreshes swap data in quietly.
   async function loadData() {
-    setLoading(true);
+    const version = ++dataVersion.current;
     const [{ data: goalData }, { data: taskData }] = await Promise.all([
       supabase.from("goals").select("*").order("created_at", { ascending: false }),
       supabase.from("tasks").select("*"),
     ]);
+    if (version !== dataVersion.current) return;
     setGoals(goalData || []);
     setTasks(taskData || []);
     setLoading(false);
@@ -210,46 +217,50 @@ export default function GoalsPage() {
     loadData();
   }
 
-  function startEditTask(task) {
-    setEditingTaskId(task.id);
-    setEditTaskForm(taskFormFromTask(task));
-  }
-
-  function cancelEditTask() {
-    setEditingTaskId(null);
-  }
-
-  async function saveEditTask(id) {
-    if (!editTaskForm.name.trim()) return notifyWarning("A task needs a name. Type one, or delete the task instead.");
-    await supabase.from("tasks").update(taskFieldsFromForm(editTaskForm)).eq("id", id);
-    setEditingTaskId(null);
-    loadData();
+  // Changes show on screen first, then save; the reload afterwards brings in
+  // anything the server added (or undoes the change if the save failed).
+  function patchTask(id, patch) {
+    dataVersion.current++;
+    setTasks((list) => list.map((t) => (t.id === id ? { ...t, ...patch } : t)));
   }
 
   async function toggleDone(task) {
-    await toggleTaskDone(task, { tasks, goals, userId: user.id });
+    const done = task.status !== "Done";
+    patchTask(task.id, { status: done ? "Done" : "To Do", completed_at: done ? new Date().toISOString() : null });
+    const saving = toggleTaskDone(task, { tasks, goals, userId: user.id });
+    if (done) {
+      notifyUndo(`Done: ${task.name}`, async () => {
+        patchTask(task.id, { status: "To Do", completed_at: null });
+        await undoTaskDone(task, await saving, { tasks, goals, userId: user.id });
+        loadData();
+      });
+    }
+    await saving;
+    loadData();
+  }
+
+  async function moveTaskToDate(task, date) {
+    patchTask(task.id, { due_date: date });
+    await supabase.from("tasks").update({ due_date: date }).eq("id", task.id);
     loadData();
   }
 
   async function deleteTask(id) {
     const task = tasks.find((t) => t.id === id);
-    await supabase.from("tasks").delete().eq("id", id);
-    await syncGoalStatuses([task?.goal_id], goals, tasks.filter((t) => t.id !== id));
+    if (!task) return;
+    dataVersion.current++;
+    setTasks((list) => list.filter((t) => t.id !== id));
+    // The note shows right away; Undo waits for the delete to finish first.
+    const deleting = deleteTaskAndSync(task, { tasks, goals });
+    notifyUndo(`Deleted: ${task.name}`, async () => {
+      dataVersion.current++;
+      setTasks((list) => [...list, task]);
+      await deleting;
+      await restoreTask(task, { tasks, goals });
+      loadData();
+    });
+    await deleting;
     loadData();
-  }
-
-  // First click arms the delete button (auto-disarms after a few seconds);
-  // a second click while armed actually deletes.
-  function handleDeleteTaskClick(id) {
-    if (confirmingDeleteTaskId === id) {
-      deleteTask(id);
-      setConfirmingDeleteTaskId(null);
-      return;
-    }
-    setConfirmingDeleteTaskId(id);
-    setTimeout(() => {
-      setConfirmingDeleteTaskId((current) => (current === id ? null : current));
-    }, 3000);
   }
 
   async function finishGoal(goal) {
@@ -401,30 +412,13 @@ export default function GoalsPage() {
     );
   }
 
-  function renderEditTaskForm(task) {
-    return (
-      <div className="form-grid compact" style={{ marginBottom: 0 }}>
-        <TaskFields
-          form={editTaskForm}
-          onChange={(patch) => setEditTaskForm((f) => ({ ...f, ...patch }))}
-          idPrefix="edit-goal-task"
-          autoFocus
-        />
-        <div className="form-actions">
-          <button className="primary" onClick={() => saveEditTask(task.id)}>Save</button>
-          <button onClick={cancelEditTask}>Cancel</button>
-        </div>
-      </div>
-    );
-  }
-
   function renderTaskRow(t, locked = false) {
-    if (editingTaskId === t.id) {
-      return <div key={t.id} style={{ padding: "6px 0" }}>{renderEditTaskForm(t)}</div>;
-    }
-    const confirming = confirmingDeleteTaskId === t.id;
     return (
-      <div className={`task-row ${confirming ? "confirming" : ""}`} key={t.id}>
+      <div
+        className={`task-row ${locked ? "" : "clickable-row"}`}
+        key={t.id}
+        onClick={locked ? undefined : openOnRowClick(() => setEditingTask(t))}
+      >
         <input
           type="checkbox"
           className="checkbox"
@@ -434,20 +428,15 @@ export default function GoalsPage() {
           aria-label={`Mark "${t.name}" ${t.status === "Done" ? "not done" : "done"}`}
         />
         <span
-          className={`task-name ${locked ? "" : "task-name-editable"} ${t.status === "Done" ? "done" : ""}`}
-          onClick={locked ? undefined : () => startEditTask(t)}
+          className={`task-name ${t.status === "Done" ? "done" : ""}`}
+          {...(locked ? {} : { role: "button", tabIndex: 0, onKeyDown: openOnKey(() => setEditingTask(t)) })}
         >
           {t.name}
         </span>
-        <TaskMeta task={t} compact />
+        <TaskMeta task={t} compact onReschedule={locked ? undefined : (date) => moveTaskToDate(t, date)} />
         {!locked && (
-          <button
-            className={confirming ? "danger row-delete-btn" : "ghost row-delete-btn"}
-            onClick={() => handleDeleteTaskClick(t.id)}
-            aria-label={confirming ? "Confirm delete task" : "Delete task"}
-            title={confirming ? "Click again to delete" : "Delete"}
-          >
-            {confirming ? "Delete?" : "×"}
+          <button className="ghost row-delete-btn" onClick={() => deleteTask(t.id)} aria-label="Delete task" title="Delete">
+            ×
           </button>
         )}
       </div>
@@ -766,6 +755,13 @@ export default function GoalsPage() {
 
   return (
     <div>
+      <TaskEditModal
+        task={editingTask}
+        tasks={tasks}
+        goals={goals}
+        onClose={() => setEditingTask(null)}
+        onSaved={loadData}
+      />
       <Celebration trigger={celebration.key} message={celebration.message} subtitle={celebration.subtitle} />
       <div className="row-between" style={{ alignItems: "flex-start" }}>
         <div>

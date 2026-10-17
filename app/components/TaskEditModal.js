@@ -3,21 +3,19 @@
 import { useEffect, useState } from "react";
 import Modal from "./Modal";
 import TaskFields from "./TaskFields";
-import { notifyWarning } from "../../lib/notify";
+import { notifyUndo, notifyWarning } from "../../lib/notify";
 import { EMPTY_TASK_FORM, taskFormFromTask } from "../../lib/taskForm";
-import { deleteTaskAndSync, saveTaskEdit } from "../../lib/taskActions";
+import { deleteTaskAndSync, restoreTask, saveTaskEdit } from "../../lib/taskActions";
 
 // Edit or delete one task in a dialog. `tasks` and `goals` are the lists as
 // loaded (for goal status syncing and the goal picker). `onSaved` runs after
 // any save or delete.
 export default function TaskEditModal({ task, tasks, goals, onClose, onSaved }) {
   const [form, setForm] = useState(EMPTY_TASK_FORM);
-  const [confirmingDelete, setConfirmingDelete] = useState(false);
 
   useEffect(() => {
     if (!task) return;
     setForm(taskFormFromTask(task));
-    setConfirmingDelete(false);
   }, [task]);
 
   // Finished and paused goals aren't offered, except the task's current one.
@@ -34,10 +32,14 @@ export default function TaskEditModal({ task, tasks, goals, onClose, onSaved }) 
   }
 
   async function remove() {
-    if (!confirmingDelete) return setConfirmingDelete(true);
-    await deleteTaskAndSync(task, { tasks, goals });
+    const deleted = task;
+    await deleteTaskAndSync(deleted, { tasks, goals });
     onSaved();
     onClose();
+    notifyUndo(`Deleted: ${deleted.name}`, async () => {
+      await restoreTask(deleted, { tasks, goals });
+      onSaved();
+    });
   }
 
   return (
@@ -52,10 +54,10 @@ export default function TaskEditModal({ task, tasks, goals, onClose, onSaved }) 
         />
         <div className="form-actions">
           <button type="button" className="danger" style={{ marginRight: "auto" }} onClick={remove}>
-            {confirmingDelete ? "Click again to delete" : "Delete"}
+            Delete
           </button>
-          <button type="submit" className="primary">Save</button>
           <button type="button" onClick={onClose}>Cancel</button>
+          <button type="submit" className="primary">Save</button>
         </div>
       </form>
     </Modal>

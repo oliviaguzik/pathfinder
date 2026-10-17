@@ -1,15 +1,19 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { supabase } from "../lib/supabaseClient";
 import Skeleton from "./components/Skeleton";
 import Icon from "./components/Icon";
 import TaskMeta from "./components/TaskMeta";
 import EventModal from "./components/EventModal";
+import EventRow from "./components/EventRow";
 import TaskEditModal from "./components/TaskEditModal";
 import { eventTimeLabel, sortEvents } from "../lib/events";
-import { toggleTaskDone } from "../lib/taskActions";
-import { toISODateLocal, todayLocalISODate } from "../lib/dates";
+import { deleteTaskAndSync, restoreTask, toggleTaskDone, undoTaskDone } from "../lib/taskActions";
+import { notifyUndo } from "../lib/notify";
+import { openOnKey, openOnRowClick } from "../lib/rowClick";
+import { deleteEvent, restoreEvent } from "../lib/eventActions";
+import { todayLocalISODate } from "../lib/dates";
 import { useAuth } from "../lib/AuthProvider";
 
 const FOCUS_LIMIT = 3;
@@ -38,14 +42,22 @@ export default function TodayPage() {
   // The event dialog: { event } to edit one, { date } to add one today.
   const [eventDialog, setEventDialog] = useState(null);
   const [editingTask, setEditingTask] = useState(null);
+  // Just-ticked tasks stay put (shown as done) for a moment before leaving the list.
+  const [lingering, setLingering] = useState(() => new Set());
+  // Each change bumps this, so a refresh that started before the change can't
+  // land afterwards and put back what was just changed.
+  const dataVersion = useRef(0);
+
   const [loading, setLoading] = useState(true);
 
   async function loadData() {
+    const version = ++dataVersion.current;
     const [{ data: taskData }, { data: goalData }, { data: eventData }] = await Promise.all([
       supabase.from("tasks").select("*"),
       supabase.from("goals").select("*"),
       supabase.from("events").select("*").eq("date", todayLocalISODate()),
     ]);
+    if (version !== dataVersion.current) return;
     setTasks(taskData || []);
     setGoals(goalData || []);
     setEvents(sortEvents(eventData || []));
@@ -58,7 +70,6 @@ export default function TodayPage() {
 
   const now = new Date();
   const today = todayLocalISODate();
-  const tomorrow = toISODateLocal(new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1));
   const firstName = (user?.user_metadata?.full_name || user?.user_metadata?.name || "").split(" ")[0];
 
   const focus = tasks
@@ -69,10 +80,11 @@ export default function TodayPage() {
   // Tasks belonging to a paused goal stay off Today until the goal is resumed.
   const pausedGoalIds = new Set(goals.filter((g) => g.paused_at && !g.completed_at).map((g) => g.id));
   const dueNow = tasks.filter(
-    (t) => t.status !== "Done" && t.due_date && t.due_date <= today && !pausedGoalIds.has(t.goal_id)
+    (t) => (t.status !== "Done" || lingering.has(t.id)) && t.due_date && t.due_date <= today && !pausedGoalIds.has(t.goal_id)
   );
   const todayList = dueNow.filter((t) => !focusIds.has(t.id)).sort(byUrgency);
-  const overdueCount = dueNow.filter((t) => t.due_date < today).length;
+  const openDue = dueNow.filter((t) => t.status !== "Done");
+  const overdueCount = openDue.filter((t) => t.due_date < today).length;
 
   // The one main goal (set on the Goals page) and its next step: the open task
   // due soonest, or the oldest one if none have dates.
@@ -96,17 +108,79 @@ export default function TodayPage() {
     return goals.find((g) => g.id === id)?.name || "";
   }
 
+  // Changes show on screen first, then save; the reload afterwards brings in
+  // anything the server added (or undoes the change if the save failed).
+  function patchTask(id, patch) {
+    dataVersion.current++;
+    setTasks((list) => list.map((t) => (t.id === id ? { ...t, ...patch } : t)));
+  }
+
+  function linger(id, on) {
+    setLingering((set) => {
+      const next = new Set(set);
+      if (on) next.add(id);
+      else next.delete(id);
+      return next;
+    });
+  }
+
   async function toggleDone(task) {
-    await toggleTaskDone(task, { tasks, goals, userId: user.id });
+    const done = task.status !== "Done";
+    linger(task.id, done);
+    if (done) setTimeout(() => linger(task.id, false), 1400);
+    patchTask(task.id, { status: done ? "Done" : "To Do", completed_at: done ? new Date().toISOString() : null });
+    const saving = toggleTaskDone(task, { tasks, goals, userId: user.id });
+    if (done) {
+      notifyUndo(`Done: ${task.name}`, async () => {
+        linger(task.id, false);
+        patchTask(task.id, { status: "To Do", completed_at: null });
+        await undoTaskDone(task, await saving, { tasks, goals, userId: user.id });
+        loadData();
+      });
+    }
+    await saving;
+    loadData();
+  }
+
+  async function deleteTask(task) {
+    dataVersion.current++;
+    setTasks((list) => list.filter((t) => t.id !== task.id));
+    // The note shows right away; Undo waits for the delete to finish first.
+    const deleting = deleteTaskAndSync(task, { tasks, goals });
+    notifyUndo(`Deleted: ${task.name}`, async () => {
+      dataVersion.current++;
+      setTasks((list) => [...list, task]);
+      await deleting;
+      await restoreTask(task, { tasks, goals });
+      loadData();
+    });
+    await deleting;
+    loadData();
+  }
+
+  async function removeEvent(ev) {
+    dataVersion.current++;
+    setEvents((list) => list.filter((e) => e.id !== ev.id));
+    const deleting = deleteEvent(ev);
+    notifyUndo(`Deleted: ${ev.title}`, async () => {
+      dataVersion.current++;
+      setEvents((list) => sortEvents([...list, ev]));
+      await deleting;
+      await restoreEvent(ev);
+      loadData();
+    });
+    await deleting;
     loadData();
   }
 
   async function setFocus(task, on) {
+    patchTask(task.id, { focus_date: on ? today : null });
     await supabase.from("tasks").update({ focus_date: on ? today : null }).eq("id", task.id);
     loadData();
   }
 
   async function moveTo(task, dateStr) {
+    patchTask(task.id, { due_date: dateStr });
     await supabase.from("tasks").update({ due_date: dateStr }).eq("id", task.id);
     loadData();
   }
@@ -116,7 +190,11 @@ export default function TodayPage() {
     const overdue = t.status !== "Done" && t.due_date && t.due_date < today;
     const focusFull = openFocusCount >= FOCUS_LIMIT;
     return (
-      <div className="task-row today-row" key={t.id}>
+      <div
+        className={`task-row today-row clickable-row ${lingering.has(t.id) ? `just-done ${inFocus ? "" : "leaving"}` : ""}`}
+        key={t.id}
+        onClick={openOnRowClick(() => setEditingTask(t))}
+      >
         <input
           type="checkbox"
           className="checkbox"
@@ -126,24 +204,20 @@ export default function TodayPage() {
         />
         <div className="task-main">
           <span
-            className={`task-name task-name-editable ${t.status === "Done" ? "done" : ""}`}
-            onClick={() => setEditingTask(t)}
-            title="Edit task"
+            className={`task-name ${t.status === "Done" ? "done" : ""}`}
+            role="button"
+            tabIndex={0}
+            onKeyDown={openOnKey(() => setEditingTask(t))}
           >
             {t.name}
           </span>
           <TaskMeta
             task={t}
             showDue={overdue}
+            onReschedule={(date) => moveTo(t, date)}
             goalName={t.category === "Goal-Related" && t.goal_id ? goalName(t.goal_id) : ""}
           />
         </div>
-        {overdue && !inFocus && (
-          <div className="reschedule">
-            <button className="ghost small-btn" onClick={() => moveTo(t, today)}>Today</button>
-            <button className="ghost small-btn" onClick={() => moveTo(t, tomorrow)}>Tomorrow</button>
-          </div>
-        )}
         <div className="today-row-actions">
           {t.status !== "Done" && (
             <button
@@ -163,6 +237,9 @@ export default function TodayPage() {
               <Icon name={inFocus ? "starFilled" : "star"} size={16} />
             </button>
           )}
+          <button className="ghost icon-btn row-delete-btn" onClick={() => deleteTask(t)} aria-label="Delete task" title="Delete">
+            ×
+          </button>
         </div>
       </div>
     );
@@ -172,9 +249,9 @@ export default function TodayPage() {
   const nowTime = `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
   const isPast = (ev) => !ev.all_day && (ev.end_time || ev.start_time || "").slice(0, 5) <= nowTime;
 
-  const dueTodayCount = dueNow.length - overdueCount;
+  const dueTodayCount = openDue.length - overdueCount;
   const summary =
-    dueNow.length === 0
+    openDue.length === 0
       ? ["Nothing due today"]
       : [dueTodayCount > 0 && `${dueTodayCount} due today`, overdueCount > 0 && `${overdueCount} overdue`].filter(Boolean);
   if (events.length > 0) summary.push(`${events.length} event${events.length === 1 ? "" : "s"}`);
@@ -267,23 +344,14 @@ export default function TodayPage() {
             {(events.length > 0 || todayList.length > 0) && (
               <div className="today-list">
                 {events.map((ev) => (
-                  <button
-                    type="button"
+                  <EventRow
                     key={ev.id}
-                    className={`task-row today-row list-event ${isPast(ev) ? "past" : ""}`}
-                    onClick={() => setEventDialog({ event: ev })}
-                  >
-                    <span className="list-event-icon">
-                      <Icon name="clock" size={14} />
-                    </span>
-                    <span className="task-main">
-                      <span className="task-name">{ev.title}</span>
-                      <span className="task-meta">
-                        <span className="meta-item list-event-when">{eventTimeLabel(ev)}</span>
-                        {ev.location && <span className="meta-item">{ev.location}</span>}
-                      </span>
-                    </span>
-                  </button>
+                    event={ev}
+                    when={eventTimeLabel(ev)}
+                    past={isPast(ev)}
+                    onOpen={() => setEventDialog({ event: ev })}
+                    onDelete={() => removeEvent(ev)}
+                  />
                 ))}
                 {todayList.map(renderRow)}
               </div>

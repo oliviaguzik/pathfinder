@@ -4,19 +4,17 @@ import { useEffect, useState } from "react";
 import Modal from "./Modal";
 import EventFields from "./EventFields";
 import { supabase } from "../../lib/supabaseClient";
-import { notifyWarning } from "../../lib/notify";
+import { notifyUndo, notifyWarning } from "../../lib/notify";
 import { EMPTY_EVENT_FORM, eventFieldsFromForm, eventFormFromEvent, newEventForm } from "../../lib/events";
 
 // Add or edit an event. Pass `event` to edit it, or `defaultDate` (YYYY-MM-DD)
 // to start a new one on that day. `onSaved` runs after any save or delete.
 export default function EventModal({ open, event, defaultDate, onClose, onSaved }) {
   const [form, setForm] = useState(EMPTY_EVENT_FORM);
-  const [confirmingDelete, setConfirmingDelete] = useState(false);
 
   useEffect(() => {
     if (!open) return;
     setForm(event ? eventFormFromEvent(event) : newEventForm(defaultDate));
-    setConfirmingDelete(false);
   }, [open, event, defaultDate]);
 
   function set(patch) {
@@ -36,11 +34,15 @@ export default function EventModal({ open, event, defaultDate, onClose, onSaved 
   }
 
   async function remove() {
-    if (!confirmingDelete) return setConfirmingDelete(true);
-    const { error } = await supabase.from("events").delete().eq("id", event.id);
+    const deleted = event;
+    const { error } = await supabase.from("events").delete().eq("id", deleted.id);
     if (error) return;
     onSaved();
     onClose();
+    notifyUndo(`Deleted: ${deleted.title}`, async () => {
+      await supabase.from("events").insert(deleted);
+      onSaved();
+    });
   }
 
   return (
@@ -50,7 +52,7 @@ export default function EventModal({ open, event, defaultDate, onClose, onSaved 
         <div className="form-actions">
           {event && (
             <button type="button" className="danger" style={{ marginRight: "auto" }} onClick={remove}>
-              {confirmingDelete ? "Click again to delete" : "Delete"}
+              Delete
             </button>
           )}
           <button type="button" onClick={onClose}>Cancel</button>

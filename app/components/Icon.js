@@ -52,6 +52,7 @@ const PATHS = {
     </>
   ),
   chevronRight: <path d="M9 6l6 6-6 6" />,
+  chevronDown: <path d="M6 9l6 6 6-6" />,
   check: <path d="M5 12.5l4.5 4.5L19 7.5" />,
   clock: (
     <>

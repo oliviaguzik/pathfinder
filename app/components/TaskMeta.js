@@ -1,4 +1,5 @@
 import Icon from "./Icon";
+import DueDateMenu from "./DueDateMenu";
 import { daysFromToday, friendlyDate } from "../../lib/dates";
 import { recurrenceLabel } from "../../lib/recurrence";
 
@@ -19,8 +20,9 @@ function dueState(task) {
 // recurrence. `compact` shows just the due date and icon-only priority/recurrence;
 // `showDue={false}` hides the date where it's already obvious (calendar days);
 // `plainDue` drops the "Overdue ·" prefix where a heading already says it;
-// `doneOn` (YYYY-MM-DD) adds "Done Sep 20" for older completed tasks.
-export default function TaskMeta({ task, goalName, compact = false, showDue = true, plainDue = false, doneOn }) {
+// `doneOn` (YYYY-MM-DD) adds "Done Sep 20" for older completed tasks;
+// `onReschedule(date)` makes the date a button that opens a "Move to" menu.
+export default function TaskMeta({ task, goalName, compact = false, showDue = true, plainDue = false, doneOn, onReschedule }) {
   const items = [];
 
   if (doneOn) {
@@ -33,11 +35,22 @@ export default function TaskMeta({ task, goalName, compact = false, showDue = tr
 
   if (showDue && task.due_date) {
     const state = dueState(task);
-    items.push(
-      <span key="due" className={`meta-item due-date ${state}`} title={`Due ${task.due_date}`}>
+    const label = (
+      <>
         {!compact && <Icon name="calendar" size={13} />}
         {state === "overdue" && !plainDue ? `Overdue · ${friendlyDate(task.due_date)}` : friendlyDate(task.due_date)}
-      </span>
+      </>
+    );
+    items.push(
+      onReschedule && task.status !== "Done" ? (
+        <DueDateMenu key="due" dueDate={task.due_date} className={`meta-item due-date ${state}`} onPick={onReschedule}>
+          {label}
+        </DueDateMenu>
+      ) : (
+        <span key="due" className={`meta-item due-date ${state}`} title={`Due ${task.due_date}`}>
+          {label}
+        </span>
+      )
     );
   }
   if (!compact && goalName) {

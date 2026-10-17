@@ -10,16 +10,20 @@ import Icon from "../components/Icon";
 import TaskFields from "../components/TaskFields";
 import TaskMeta from "../components/TaskMeta";
 import EventModal from "../components/EventModal";
+import EventRow from "../components/EventRow";
+import DueDateMenu from "../components/DueDateMenu";
 import TaskEditModal from "../components/TaskEditModal";
 import EventFields from "../components/EventFields";
 import { eventFieldsFromForm, eventTimeLabel, formatTime, newEventForm, sortEvents } from "../../lib/events";
-import { deleteTaskAndSync, toggleTaskDone } from "../../lib/taskActions";
+import { deleteTaskAndSync, restoreTask, toggleTaskDone, undoTaskDone } from "../../lib/taskActions";
 import { positionBetween, nextPosition, sortByPosition } from "../../lib/reorder";
 import { friendlyDate, getWeekDays, localDateOf, parseLocalDate, toISODateLocal, weekLabel } from "../../lib/dates";
 import { buildAgenda, groupCompleted, groupTasksByDue } from "../../lib/taskGroups";
 import { EMPTY_TASK_FORM, taskFieldsFromForm } from "../../lib/taskForm";
 import { useAuth } from "../../lib/AuthProvider";
-import { notifyWarning } from "../../lib/notify";
+import { notifyUndo, notifyWarning } from "../../lib/notify";
+import { openOnKey, openOnRowClick } from "../../lib/rowClick";
+import { deleteEvent, restoreEvent } from "../../lib/eventActions";
 
 function isSameDay(a, b) {
   return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
@@ -141,7 +145,13 @@ export default function TasksPage() {
   const [draggedTaskId, setDraggedTaskId] = useState(null);
   const [dragOverTaskId, setDragOverTaskId] = useState(null);
   const [dragOverDay, setDragOverDay] = useState(null);
-  const [confirmingDeleteTaskId, setConfirmingDeleteTaskId] = useState(null);
+  // Just-ticked tasks stay where they are for a moment (shown as done) before
+  // moving to Completed, so the check-off is seen rather than vanishing.
+  const [lingering, setLingering] = useState(() => new Set());
+  // Each change bumps this, so a refresh that started before the change can't
+  // land afterwards and put back what was just changed.
+  const dataVersion = useRef(0);
+
 
   useEffect(() => {
     const stored = localStorage.getItem("tasksView");
@@ -175,13 +185,15 @@ export default function TasksPage() {
     localStorage.setItem("tasksView", next);
   }
 
+  // Only the first load shows placeholders; later refreshes swap data in quietly.
   async function loadData() {
-    setLoading(true);
+    const version = ++dataVersion.current;
     const [{ data: taskData }, { data: goalData }, { data: eventData }] = await Promise.all([
       supabase.from("tasks").select("*").order("created_at", { ascending: false }),
       supabase.from("goals").select("*"),
       supabase.from("events").select("*"),
     ]);
+    if (version !== dataVersion.current) return;
     setTasks(taskData || []);
     setGoals(goalData || []);
     setEvents(eventData || []);
@@ -254,32 +266,86 @@ export default function TasksPage() {
     loadData();
   }
 
-  async function toggleDone(task) {
-    await toggleTaskDone(task, { tasks, goals, userId: user.id });
+  // Changes show on screen first, then save; the reload afterwards brings in
+  // anything the server added (or undoes the change if the save failed).
+  function patchTask(id, patch) {
+    dataVersion.current++;
+    setTasks((list) => list.map((t) => (t.id === id ? { ...t, ...patch } : t)));
+  }
+
+  function isDone(t) {
+    return t.status === "Done" || lingering.has(t.id);
+  }
+
+  function linger(id, on) {
+    setLingering((set) => {
+      const next = new Set(set);
+      if (on) next.add(id);
+      else next.delete(id);
+      return next;
+    });
+  }
+
+  async function toggleDone(shown) {
+    const task = tasks.find((t) => t.id === shown.id);
+    if (!task) return;
+    const done = !isDone(task);
+    if (!done && lingering.has(task.id)) linger(task.id, false);
+    patchTask(task.id, { status: done ? "Done" : "To Do", completed_at: done ? new Date().toISOString() : null });
+    if (done) {
+      linger(task.id, true);
+      setTimeout(() => linger(task.id, false), 1400);
+    }
+    // Unticking during the linger: the task was saved as done, so flip it back.
+    const saved = done ? task : { ...task, status: "Done" };
+    const saving = toggleTaskDone(saved, { tasks, goals, userId: user.id });
+    if (done) {
+      notifyUndo(`Done: ${task.name}`, async () => {
+        linger(task.id, false);
+        patchTask(task.id, { status: "To Do", completed_at: null });
+        await undoTaskDone(task, await saving, { tasks, goals, userId: user.id });
+        loadData();
+      });
+    }
+    await saving;
     loadData();
   }
 
   async function deleteTask(id) {
-    await deleteTaskAndSync(tasks.find((t) => t.id === id), { tasks, goals });
+    const task = tasks.find((t) => t.id === id);
+    if (!task) return;
+    dataVersion.current++;
+    setTasks((list) => list.filter((t) => t.id !== id));
+    // The note shows right away; Undo waits for the delete to finish first.
+    const deleting = deleteTaskAndSync(task, { tasks, goals });
+    notifyUndo(`Deleted: ${task.name}`, async () => {
+      dataVersion.current++;
+      setTasks((list) => [...list, task]);
+      await deleting;
+      await restoreTask(task, { tasks, goals });
+      loadData();
+    });
+    await deleting;
     loadData();
   }
 
-  // First click arms the delete button (auto-disarms after a few seconds);
-  // a second click while armed actually deletes. Avoids a fat-finger delete
-  // on a dense list without a full confirm panel per row.
-  function handleDeleteClick(id) {
-    if (confirmingDeleteTaskId === id) {
-      deleteTask(id);
-      setConfirmingDeleteTaskId(null);
-      return;
-    }
-    setConfirmingDeleteTaskId(id);
-    setTimeout(() => {
-      setConfirmingDeleteTaskId((current) => (current === id ? null : current));
-    }, 3000);
+  async function removeEvent(ev) {
+    dataVersion.current++;
+    setEvents((list) => list.filter((e) => e.id !== ev.id));
+    const deleting = deleteEvent(ev);
+    notifyUndo(`Deleted: ${ev.title}`, async () => {
+      dataVersion.current++;
+      setEvents((list) => [...list, ev]);
+      await deleting;
+      await restoreEvent(ev);
+      loadData();
+    });
+    await deleting;
+    loadData();
   }
 
   async function moveTaskToDate(taskId, dueDateStr) {
+    patchTask(taskId, { due_date: dueDateStr });
     await supabase.from("tasks").update({ due_date: dueDateStr }).eq("id", taskId);
     loadData();
   }
@@ -305,8 +371,9 @@ export default function TasksPage() {
     const prev = ordered[insertIndex - 1];
     const next = ordered[insertIndex];
     const newPosition = positionBetween(prev?.position, next?.position);
-    await supabase.from("tasks").update({ position: newPosition }).eq("id", draggedId);
+    patchTask(draggedId, { position: newPosition });
     if (sortBy !== "custom") setSortBy("custom");
+    await supabase.from("tasks").update({ position: newPosition }).eq("id", draggedId);
     loadData();
   }
 
@@ -318,7 +385,8 @@ export default function TasksPage() {
     (v) => v !== "All"
   ).length;
 
-  const visibleTasks = tasks.filter((t) => {
+  const listTasks = lingering.size ? tasks.map((t) => (lingering.has(t.id) ? { ...t, status: "To Do" } : t)) : tasks;
+  const visibleTasks = listTasks.filter((t) => {
     if (filterCategory !== "All" && t.category !== filterCategory) return false;
     if (filterStatus !== "All" && t.status !== filterStatus) return false;
     if (filterPriority !== "All" && t.priority !== filterPriority) return false;
@@ -375,12 +443,11 @@ export default function TasksPage() {
   }
 
   function renderTaskRow(t, { doneOn, showDue = true, plainDue = false } = {}) {
-    const confirming = confirmingDeleteTaskId === t.id;
-    const overdue = isOverdue(t);
     return (
       <div
-        className={`task-row ${dragOverTaskId === t.id ? "drag-over" : ""} ${confirming ? "confirming" : ""}`}
+        className={`task-row clickable-row ${dragOverTaskId === t.id ? "drag-over" : ""} ${lingering.has(t.id) ? "just-done leaving" : ""}`}
         key={t.id}
+        onClick={openOnRowClick(() => startEditTask(t))}
         onDragOver={(e) => {
           if (!draggedTaskId) return;
           e.preventDefault();
@@ -417,15 +484,16 @@ export default function TasksPage() {
         <input
           type="checkbox"
           className="checkbox"
-          checked={t.status === "Done"}
+          checked={isDone(t)}
           onChange={() => toggleDone(t)}
-          aria-label={`Mark "${t.name}" ${t.status === "Done" ? "not done" : "done"}`}
+          aria-label={`Mark "${t.name}" ${isDone(t) ? "not done" : "done"}`}
         />
         <div className="task-main">
           <span
-            className={`task-name task-name-editable ${t.status === "Done" ? "done" : ""}`}
-            onClick={() => startEditTask(t)}
-            title="Edit task"
+            className={`task-name ${isDone(t) ? "done" : ""}`}
+            role="button"
+            tabIndex={0}
+            onKeyDown={openOnKey(() => startEditTask(t))}
           >
             {t.name}
           </span>
@@ -434,26 +502,13 @@ export default function TasksPage() {
             doneOn={doneOn}
             showDue={showDue}
             plainDue={plainDue}
+            onReschedule={(date) => moveTaskToDate(t.id, date)}
             goalName={t.category === "Goal-Related" && t.goal_id ? goalName(t.goal_id) : ""}
           />
         </div>
-        {overdue && (
-          <div className="reschedule">
-            <button className="ghost small-btn" onClick={() => moveTaskToDate(t.id, todayStr)}>Today</button>
-            <button className="ghost small-btn" onClick={() => moveTaskToDate(t.id, tomorrowStr)}>Tomorrow</button>
-          </div>
-        )}
         <div className="task-actions">
-          <button className="ghost icon-btn" onClick={() => startEditTask(t)} aria-label="Edit task" title="Edit">
-            <Icon name="edit" size={14} />
-          </button>
-          <button
-            className={confirming ? "danger icon-btn" : "ghost icon-btn"}
-            onClick={() => handleDeleteClick(t.id)}
-            aria-label={confirming ? "Confirm delete task" : "Delete task"}
-            title={confirming ? "Click again to delete" : "Delete"}
-          >
-            {confirming ? "Delete?" : "×"}
+          <button className="ghost icon-btn" onClick={() => deleteTask(t.id)} aria-label="Delete task" title="Delete">
+            ×
           </button>
         </div>
       </div>
@@ -480,41 +535,49 @@ export default function TasksPage() {
     };
   }
 
-  // An event in the task list: shaped like a task row so it lines up, but teal
-  // with a clock where the checkbox would be. Click to edit.
   function renderListEvent(ev, showDate) {
     const when = showDate ? `${friendlyDate(ev.date)} · ${eventTimeLabel(ev)}` : eventTimeLabel(ev);
     return (
-      <button type="button" className="task-row list-event" key={`e${ev.id}`} onClick={() => setEventDialog({ event: ev })}>
-        <span className="list-event-icon">
-          <Icon name="clock" size={14} />
-        </span>
-        <span className="task-main">
-          <span className="task-name">{ev.title}</span>
-          <span className="task-meta">
-            <span className="meta-item list-event-when">{when}</span>
-            {ev.location && <span className="meta-item">{ev.location}</span>}
-          </span>
-        </span>
-      </button>
+      <EventRow
+        key={`e${ev.id}`}
+        event={ev}
+        when={when}
+        onOpen={() => setEventDialog({ event: ev })}
+        onDelete={() => removeEvent(ev)}
+      />
     );
   }
 
   function renderAgendaEvent(ev) {
     return (
-      <button type="button" className="agenda-event" key={ev.id} onClick={() => setEventDialog({ event: ev })}>
+      <div
+        className="undated-task-row agenda-event clickable-row"
+        key={ev.id}
+        onClick={openOnRowClick(() => setEventDialog({ event: ev }))}
+      >
         <Icon name="clock" size={12} />
         <span className="agenda-event-time">{ev.all_day || !ev.start_time ? "All day" : formatTime(ev.start_time)}</span>
-        <span className="agenda-event-title">{ev.title}</span>
-      </button>
+        <span
+          className="agenda-event-title"
+          role="button"
+          tabIndex={0}
+          onKeyDown={openOnKey(() => setEventDialog({ event: ev }))}
+        >
+          {ev.title}
+        </span>
+        <button className="ghost row-delete-btn" onClick={() => removeEvent(ev)} aria-label="Delete event" title="Delete">
+          ×
+        </button>
+      </div>
     );
   }
 
   function renderUpcomingTaskRow(t, showDate) {
     return (
       <div
-        className="undated-task-row"
+        className="undated-task-row clickable-row"
         key={t.id}
+        onClick={openOnRowClick(() => startEditTask(t))}
         draggable
         onDragStart={(e) => {
           e.dataTransfer.effectAllowed = "move";
@@ -525,29 +588,32 @@ export default function TasksPage() {
         <input
           type="checkbox"
           className="checkbox"
-          checked={t.status === "Done"}
+          checked={isDone(t)}
           onChange={() => toggleDone(t)}
         />
         <div className="upcoming-task-info">
           <span
-            className={`upcoming-task-name ${t.status === "Done" ? "done" : ""}`}
-            onClick={() => startEditTask(t)}
+            className={`upcoming-task-name ${isDone(t) ? "done" : ""}`}
+            role="button"
+            tabIndex={0}
+            onKeyDown={openOnKey(() => startEditTask(t))}
           >
             {t.name}
           </span>
           {showDate && (
-            <div className={isOverdue(t) ? "due-date overdue" : isDueToday(t) ? "due-date today" : "muted due-date"}>
-              {friendlyDate(t.due_date)}
+            <div className="upcoming-task-due">
+              <DueDateMenu
+                dueDate={t.due_date}
+                className={isOverdue(t) ? "due-date overdue" : isDueToday(t) ? "due-date today" : "muted due-date"}
+                onPick={(date) => moveTaskToDate(t.id, date)}
+              >
+                {friendlyDate(t.due_date)}
+              </DueDateMenu>
             </div>
           )}
         </div>
-        <button
-          className={confirmingDeleteTaskId === t.id ? "danger row-delete-btn" : "ghost row-delete-btn"}
-          onClick={() => handleDeleteClick(t.id)}
-          aria-label={confirmingDeleteTaskId === t.id ? "Confirm delete task" : "Delete task"}
-          title={confirmingDeleteTaskId === t.id ? "Click again to delete" : "Delete"}
-        >
-          {confirmingDeleteTaskId === t.id ? "Delete?" : "×"}
+        <button className="ghost row-delete-btn" onClick={() => deleteTask(t.id)} aria-label="Delete task" title="Delete">
+          ×
         </button>
       </div>
     );
@@ -556,8 +622,9 @@ export default function TasksPage() {
   function renderUndatedTaskRow(t) {
     return (
       <div
-        className="undated-task-row"
+        className="undated-task-row clickable-row"
         key={t.id}
+        onClick={openOnRowClick(() => startEditTask(t))}
         draggable
         onDragStart={(e) => {
           e.dataTransfer.effectAllowed = "move";
@@ -568,22 +635,19 @@ export default function TasksPage() {
         <input
           type="checkbox"
           className="checkbox"
-          checked={t.status === "Done"}
+          checked={isDone(t)}
           onChange={() => toggleDone(t)}
         />
         <span
-          className={`undated-task-name ${t.status === "Done" ? "done" : ""}`}
-          onClick={() => startEditTask(t)}
+          className={`undated-task-name ${isDone(t) ? "done" : ""}`}
+          role="button"
+          tabIndex={0}
+          onKeyDown={openOnKey(() => startEditTask(t))}
         >
           {t.name}
         </span>
-        <button
-          className={confirmingDeleteTaskId === t.id ? "danger row-delete-btn" : "ghost row-delete-btn"}
-          onClick={() => handleDeleteClick(t.id)}
-          aria-label={confirmingDeleteTaskId === t.id ? "Confirm delete task" : "Delete task"}
-          title={confirmingDeleteTaskId === t.id ? "Click again to delete" : "Delete"}
-        >
-          {confirmingDeleteTaskId === t.id ? "Delete?" : "×"}
+        <button className="ghost row-delete-btn" onClick={() => deleteTask(t.id)} aria-label="Delete task" title="Delete">
+          ×
         </button>
       </div>
     );
@@ -595,7 +659,10 @@ export default function TasksPage() {
         className="calendar-task"
         key={t.id}
         draggable
-        onClick={(e) => e.stopPropagation()}
+        onClick={(e) => {
+          e.stopPropagation();
+          openOnRowClick(() => startEditTask(t))(e);
+        }}
         onDragStart={(e) => {
           e.dataTransfer.effectAllowed = "move";
           setDraggedTaskId(t.id);
@@ -605,13 +672,15 @@ export default function TasksPage() {
         <input
           type="checkbox"
           className="checkbox"
-          checked={t.status === "Done"}
+          checked={isDone(t)}
           onChange={() => toggleDone(t)}
-          aria-label={`Mark "${t.name}" ${t.status === "Done" ? "not done" : "done"}`}
+          aria-label={`Mark "${t.name}" ${isDone(t) ? "not done" : "done"}`}
         />
         <span
-          className={`task-name-editable calendar-task-name ${t.status === "Done" ? "done" : ""}`}
-          onClick={() => startEditTask(t)}
+          className={`calendar-task-name ${isDone(t) ? "done" : ""}`}
+          role="button"
+          tabIndex={0}
+          onKeyDown={openOnKey(() => startEditTask(t))}
           title={t.name}
         >
           {t.name}
@@ -661,19 +730,20 @@ export default function TasksPage() {
           </div>
         )}
         {dayTasks.map((t) => (
-          <div className="task-row" key={t.id}>
+          <div className="task-row clickable-row" key={t.id} onClick={openOnRowClick(() => startEditTask(t))}>
             <input
               type="checkbox"
               className="checkbox"
-              checked={t.status === "Done"}
+              checked={isDone(t)}
               onChange={() => toggleDone(t)}
-              aria-label={`Mark "${t.name}" ${t.status === "Done" ? "not done" : "done"}`}
+              aria-label={`Mark "${t.name}" ${isDone(t) ? "not done" : "done"}`}
             />
             <div className="task-main">
               <span
-                className={`task-name task-name-editable ${t.status === "Done" ? "done" : ""}`}
-                onClick={() => startEditTask(t)}
-                title="Edit task"
+                className={`task-name ${isDone(t) ? "done" : ""}`}
+                role="button"
+                tabIndex={0}
+                onKeyDown={openOnKey(() => startEditTask(t))}
               >
                 {t.name}
               </span>
@@ -683,9 +753,11 @@ export default function TasksPage() {
                 goalName={t.category === "Goal-Related" && t.goal_id ? goalName(t.goal_id) : ""}
               />
             </div>
-            <button className="ghost icon-btn" onClick={() => startEditTask(t)} aria-label="Edit task" title="Edit">
-              <Icon name="edit" size={14} />
-            </button>
+            <div className="task-actions">
+              <button className="ghost icon-btn" onClick={() => deleteTask(t.id)} aria-label="Delete task" title="Delete">
+                ×
+              </button>
+            </div>
           </div>
         ))}
         <form className="day-panel-add" onSubmit={(e) => addTaskOnDay(e, dateStr)}>
@@ -718,8 +790,6 @@ export default function TasksPage() {
         ? calendarDate.toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric", year: "numeric" })
         : calendarDate.toLocaleDateString(undefined, { month: "long", year: "numeric" });
   const today = new Date();
-  const todayStr = toISODateLocal(today);
-  const tomorrowStr = toISODateLocal(new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1));
 
   const tasksByDate = {};
   const undatedTasksRaw = [];
@@ -1158,8 +1228,9 @@ export default function TasksPage() {
                         ))}
                         {dayTasks.map((t) => (
                           <div
-                            className={`calendar-week-task ${t.status === "Done" ? "done" : ""}`}
+                            className={`calendar-week-task clickable-row ${isDone(t) ? "done" : ""}`}
                             key={t.id}
+                            onClick={openOnRowClick(() => startEditTask(t))}
                             draggable
                             onDragStart={(e) => {
                               e.dataTransfer.effectAllowed = "move";
@@ -1170,14 +1241,16 @@ export default function TasksPage() {
                             <input
                               type="checkbox"
                               className="checkbox"
-                              checked={t.status === "Done"}
+                              checked={isDone(t)}
                               onChange={() => toggleDone(t)}
-                              aria-label={`Mark "${t.name}" ${t.status === "Done" ? "not done" : "done"}`}
+                              aria-label={`Mark "${t.name}" ${isDone(t) ? "not done" : "done"}`}
                             />
                             <div className="task-main">
                               <span
-                                className={`task-name task-name-editable ${t.status === "Done" ? "done" : ""}`}
-                                onClick={() => startEditTask(t)}
+                                className={`task-name ${isDone(t) ? "done" : ""}`}
+                                role="button"
+                                tabIndex={0}
+                                onKeyDown={openOnKey(() => startEditTask(t))}
                               >
                                 {t.name}
                               </span>
