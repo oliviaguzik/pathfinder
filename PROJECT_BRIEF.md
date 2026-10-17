@@ -87,9 +87,11 @@ answers "what matters today?" and leaves adding/planning to Tasks.
   in the box (`HighlightInput`: a copy of the text behind the box), and a line
   under it shows the result ("Due Fri, Oct 30") with × to keep the words in
   the name. To make the feature discoverable: the empty box cycles through
-  examples ("e.g. Pay rent on the 1st"), an ⓘ in the bar opens one line: "Add a
-  date by typing it, like “tomorrow”, “fri” or “oct 20”. For events, add a
-  time: “7pm”.", and the Options date field says
+  examples ("e.g. Pay rent on the 1st"), an ⓘ in the bar opens one line that
+  follows the Task / Event switch: "Add a due date by typing it, like
+  “tomorrow”, “fri” or “oct 20”." / "Add the day and time by typing them, like
+  “fri 7pm”, “tomorrow at noon” or “oct 20 3-4pm”." (a test checks these
+  examples parse), and the Options date field says
   "or type it in the name, e.g. “next fri”". Goal cards' add box highlights the same way;
   the words are taken out of the saved name. Changing the date in Options by
   hand wins. "sun"/"sat" alone aren't read as days ("sun cream").

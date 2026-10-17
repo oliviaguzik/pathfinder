@@ -151,9 +151,11 @@ export default function AddBar({ inSheet = false, onAdded }) {
           }}
           inputClassName="quick-add-input"
         />
-        <Popover bare ariaLabel="How to type dates and times" label={<Icon name="info" size={16} />}>
+        <Popover bare ariaLabel={kind === "event" ? "How to type a day and time" : "How to type a due date"} label={<Icon name="info" size={16} />}>
           <p className="typed-dates-help">
-            Add a date by typing it, like “tomorrow”, “fri” or “oct 20”. For events, add a time: “7pm”.
+            {kind === "event"
+              ? "Add the day and time by typing them, like “fri 7pm”, “tomorrow at noon” or “oct 20 3-4pm”."
+              : "Add a due date by typing it, like “tomorrow”, “fri” or “oct 20”."}
           </p>
         </Popover>
         {!inSheet && (
