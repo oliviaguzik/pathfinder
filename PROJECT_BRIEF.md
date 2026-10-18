@@ -316,6 +316,15 @@ Clean, modern, calm — closer to Things/Todoist than a form-based admin tool.
     sits in the card without a second box. The Add sheet puts Task / Event
     across the top, then the box and Add
   - Touch screens: 16px text in every box, so the iPhone doesn't zoom in
+  - Feels like a native app: the app icon (Summit, `BrandMark`) top-left;
+    San Francisco font on Apple phones; iPhone-style tab bar; hairlines
+    between rows; rows darken while pressed; no tap flash or text selection
+  - Gestures: swipe a task right to tick it off, left to delete (events: left
+    to delete), with Undo as usual (`lib/useSwipeRow`, `SwipeRow`); swipe a
+    sheet down to close it (`Modal`); pull down at the top to reload, in the
+    Home Screen app only (`PullToRefresh`)
+  - Pages switch instantly (`next/link`), with no full reload
+  - Sign-in fills the screen like an app's welcome screen
   - Plan: the Add bar becomes a floating + button that opens it in a sheet
     (options open, box focused, closes after adding)
   - Every dialog is a bottom sheet (slides up, full width, grab handle)
