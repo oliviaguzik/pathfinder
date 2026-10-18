@@ -77,7 +77,7 @@ export default function PlanPage() {
     <PlanContext.Provider value={plan}>
       <div>
         <h1>Plan</h1>
-        <p className="page-sub">Your tasks and events, all in one place.</p>
+        <p className="page-sub page-sub-intro">Your tasks and events, all in one place.</p>
 
         <div className="plan-addbar-inline">
           <AddBar />

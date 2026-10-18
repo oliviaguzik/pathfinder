@@ -222,7 +222,7 @@ export default function ReviewPage() {
       <div className="review-header">
         <div>
           <h1>Review</h1>
-          <p className="page-sub">Look back at what you got done, and clear the decks for what&apos;s next.</p>
+          <p className="page-sub page-sub-intro">Look back at what you got done, and clear the decks for what&apos;s next.</p>
         </div>
         <div className="review-controls">
           <div className="segmented" role="group" aria-label="Review range">

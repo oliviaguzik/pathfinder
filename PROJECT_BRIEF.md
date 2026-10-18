@@ -305,8 +305,17 @@ Clean, modern, calm — closer to Things/Todoist than a form-based admin tool.
   toggle); clicking a day opens a panel with that day's tasks and a quick
   add for that date; busy month cells show "+N more"
 - Phones (600px and below):
-  - A bottom tab bar (Today · Plan · Goals · Review, icons + labels); the top
-    bar keeps the logo and a ☰ menu (switch light / dark, Sign out)
+  - A bottom tab bar (Today · Plan · Goals · Review, icons + labels)
+  - No top bar: like the iPhone's own apps, a big page title with the ☰
+    menu (Notifications, Tour of this page, light / dark, Sign out) in a
+    slim row above it; once you scroll, a blurred bar with the page name
+    fades in (NavBar `.scrolled`). The one-line page introductions are
+    hidden on phones
+  - Review: the first two numbers side by side, the best day below.
+    Goals: notes show three lines (tap for the rest), and a goal's task list
+    sits in the card without a second box. The Add sheet puts Task / Event
+    across the top, then the box and Add
+  - Touch screens: 16px text in every box, so the iPhone doesn't zoom in
   - Plan: the Add bar becomes a floating + button that opens it in a sheet
     (options open, box focused, closes after adding)
   - Every dialog is a bottom sheet (slides up, full width, grab handle)
@@ -317,7 +326,7 @@ Clean, modern, calm — closer to Things/Todoist than a form-based admin tool.
     menus) and row buttons are always visible
 - Phones: tapping a row opens it; the Add bar
   puts the Task/Event switch and Options on top, text box and Add below;
-  the top bar drops the "PathFinder" word so all tabs fit; calendar
+  calendar
   controls wrap so nothing scrolls sideways. Month cells show task names
   on up to two lines
 - All pages share one page width (1360px max), so switching views or pages

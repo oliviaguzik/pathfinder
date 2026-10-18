@@ -2457,3 +2457,93 @@ button.danger-text:hover { color: var(--danger); background: color-mix(in srgb, 
 .notify-footnote { margin: -4px 0 0; }
 .notify-test { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding-top: 4px; border-top: 1px solid var(--border-soft); }
 .notify-problem { margin: 10px 0 0; font-size: 13px; line-height: 1.5; color: var(--danger); }
+
+/* ---------- Phones: a big page title instead of a top bar ----------
+   The ☰ sits beside the title; once you scroll, a slim bar with the page
+   name fades in (NavBar adds .scrolled). */
+.topnav-title { display: none; }
+@media (max-width: 600px) {
+  .topnav {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 30;
+    justify-content: flex-end;
+    height: calc(54px + env(safe-area-inset-top, 0px));
+    padding: env(safe-area-inset-top, 0px) 8px 0 16px;
+    border-bottom: 1px solid transparent;
+    background: transparent;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    transition: background 0.2s, border-color 0.2s;
+  }
+  .topnav .brand { display: none; }
+  .topnav-title {
+    display: block;
+    position: absolute;
+    left: 60px;
+    right: 60px;
+    bottom: 0;
+    line-height: 54px;
+    text-align: center;
+    font-size: 16px;
+    font-weight: 650;
+    letter-spacing: -0.01em;
+    opacity: 0;
+    transition: opacity 0.2s;
+    pointer-events: none;
+  }
+  .topnav.scrolled {
+    background: color-mix(in srgb, var(--bg) 82%, transparent);
+    border-bottom-color: var(--border-soft);
+    backdrop-filter: saturate(1.4) blur(14px);
+    -webkit-backdrop-filter: saturate(1.4) blur(14px);
+  }
+  .topnav.scrolled .topnav-title { opacity: 1; }
+  .topnav-phone { position: relative; z-index: 1; margin-right: 0; }
+
+  .container { padding-top: calc(52px + env(safe-area-inset-top, 0px)); }
+  h1 { font-size: 32px; line-height: 1.2; letter-spacing: -0.03em; margin-bottom: 16px; }
+  h1 + .page-sub:not(.page-sub-intro) { margin-top: -12px; }
+  /* The one-line page introductions are for wide screens; phones get straight to it. */
+  .page-sub-intro { display: none; }
+  .page-head, .review-header { margin-bottom: 16px; }
+
+  /* Review: the first two numbers side by side, the best day underneath. */
+  .summary-strip { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .summary-stat { padding: 14px 16px; }
+  .summary-stat + .summary-stat { border-top: none; }
+  .summary-stat:nth-child(2) { border-left: 1px solid var(--border-soft); }
+  .summary-stat:nth-child(3) { grid-column: 1 / -1; border-top: 1px solid var(--border-soft); }
+  .stat-value { font-size: 24px; }
+
+  /* Goals: long notes show three lines; tap them to read the rest. */
+  .goal-notes { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; cursor: pointer; }
+  .goal-notes.expanded { display: block; -webkit-line-clamp: unset; }
+
+  /* Goals: the task list sits in the card, not in a second box inside it. */
+  .tile-tasks-box { border: none; border-top: 1px solid var(--border-soft); border-radius: 0; margin-top: 14px; overflow: visible; }
+  .tile-tasks-header { padding: 8px 0 4px; border-bottom: none; color: var(--muted); }
+  .tile-tasks-header button { margin-right: -8px; }
+  .tile-tasks-list { padding: 0; }
+  .tile-add-task-form { margin: 0 -18px; padding: 10px 18px; }
+
+  /* Room below the last row so the floating + never covers it. */
+  .container:has(.fab) { padding-bottom: calc(170px + env(safe-area-inset-bottom, 0px)); }
+}
+
+@media (max-width: 600px) {
+  /* The Add sheet: Task / Event across the top, then the box and Add. */
+  .quick-add.in-sheet .quick-add-row { flex-wrap: wrap; row-gap: 12px; }
+  .quick-add.in-sheet .add-kind { flex: 1 1 100%; display: grid; grid-template-columns: 1fr 1fr; }
+  .quick-add.in-sheet .add-kind button { justify-content: center; }
+  .quick-add.in-sheet .quick-add-input-wrap { flex: 1 1 0; }
+}
+
+/* Touch screens: 16px text in boxes, or the iPhone zooms the page in on every tap. */
+@media (pointer: coarse) {
+  select, input[type="text"], input[type="date"], input[type="number"], input[type="time"],
+  input[type="datetime-local"], input[type="email"], textarea, .select-trigger,
+  .quick-add input.quick-add-input, .quick-add-task-row input { font-size: 16px; }
+}

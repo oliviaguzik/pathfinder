@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 import ThemeToggle, { applyTheme } from "./ThemeToggle";
 import Menu from "./Menu";
@@ -24,17 +24,30 @@ function toggleTheme() {
   applyTheme(document.documentElement.getAttribute("data-theme") === "dark" ? "light" : "dark");
 }
 
-// Wide screens: one top bar with the pages, theme and Sign out. Phones: the top
-// bar keeps the logo and a ☰ menu (theme, Sign out), and the pages move to a
-// tab bar along the bottom, one thumb-tap away.
+// Wide screens: one top bar with the pages, theme and Sign out. Phones: no
+// bar, just the ☰ menu beside the page's big title, like the iPhone's own
+// apps; once you scroll, a slim bar with the page name fades in. The pages
+// move to a tab bar along the bottom, one thumb-tap away.
 export default function NavBar() {
   const pathname = usePathname();
   const { user, signOut } = useAuth();
   const [notificationsOpen, setNotificationsOpen] = useState(false);
+  const [scrolled, setScrolled] = useState(false);
+  const pageName = NAV_LINKS.find(({ href }) => isActive(pathname, href))?.label || "PathFinder";
+
+  useEffect(() => {
+    const onScroll = () => setScrolled(window.scrollY > 44);
+    onScroll();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
 
   return (
     <>
-      <nav className="topnav">
+      <nav className={`topnav ${scrolled ? "scrolled" : ""}`}>
+        <span className="topnav-title" aria-hidden="true">
+          {pageName}
+        </span>
         <a href="/" className="brand">
           <span className="brand-mark" aria-hidden="true">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">

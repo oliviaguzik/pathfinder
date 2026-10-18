@@ -522,7 +522,15 @@ export default function GoalsPage() {
           </>
         )}
 
-        {g.notes && <p className="goal-notes" style={{ marginTop: showHeader ? 10 : 0 }}>{g.notes}</p>}
+        {g.notes && (
+          <p
+            className="goal-notes"
+            style={{ marginTop: showHeader ? 10 : 0 }}
+            onClick={(e) => e.currentTarget.classList.toggle("expanded")}
+          >
+            {g.notes}
+          </p>
+        )}
 
         {!showHeader && (
           <div className="row" style={{ justifyContent: "flex-end", marginTop: g.notes ? 6 : -4 }}>
@@ -756,7 +764,7 @@ export default function GoalsPage() {
       <div className="row-between page-head" style={{ alignItems: "flex-start" }}>
         <div>
           <h1>Goals</h1>
-          <p className="page-sub">Track progress toward the things that matter beyond day-to-day tasks.</p>
+          <p className="page-sub page-sub-intro">Track progress toward the things that matter beyond day-to-day tasks.</p>
         </div>
         <div className="row" style={{ gap: 10 }}>
           <div className="row goals-view-toggle" style={{ gap: 4 }}>
