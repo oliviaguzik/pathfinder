@@ -306,17 +306,20 @@ Clean, modern, calm — closer to Things/Todoist than a form-based admin tool.
   add for that date; busy month cells show "+N more"
 - Phones (600px and below):
   - A bottom tab bar (Today · Plan · Goals · Review, icons + labels)
-  - No top bar: like the iPhone's own apps, a big page title with the ☰
-    menu (Notifications, Tour of this page, light / dark, Sign out) in a
-    slim row above it; once you scroll, a blurred bar with the page name
-    fades in (NavBar `.scrolled`). The one-line page introductions are
-    hidden on phones
+  - No top bar: every page starts with its big title, and your initial in a
+    circle level with it (like the App Store); the circle's menu has your
+    email, Notifications, Tour of this page, light / dark, Sign out. Once you
+    scroll, a blurred bar with the app icon and page name fades in (NavBar
+    `.scrolled`). The app icon also sits by Today's date. The one-line page
+    introductions are hidden on phones
+  - Plan's view switch reads "List | Calendar" in words; Goals adds with the
+    same round + as Plan, and always shows cards
   - Review: the first two numbers side by side, the best day below.
     Goals: notes show three lines (tap for the rest), and a goal's task list
     sits in the card without a second box. The Add sheet puts Task / Event
     across the top, then the box and Add
   - Touch screens: 16px text in every box, so the iPhone doesn't zoom in
-  - Feels like a native app: the app icon (Summit, `BrandMark`) top-left;
+  - Feels like a native app: the app icon (Summit, `BrandMark`);
     San Francisco font on Apple phones; iPhone-style tab bar; hairlines
     between rows; rows darken while pressed; no tap flash or text selection
   - Gestures: swipe a task right to tick it off, left to delete (events: left

@@ -8,6 +8,7 @@ import TaskMeta from "./components/TaskMeta";
 import EventModal from "./components/EventModal";
 import EventRow from "./components/EventRow";
 import SwipeRow from "./components/SwipeRow";
+import BrandMark from "./components/BrandMark";
 import TaskEditModal from "./components/TaskEditModal";
 import PageTour from "./components/PageTour";
 import { eventTimeLabel, occurrencesBetween, sortEvents } from "../lib/events";
@@ -260,6 +261,7 @@ export default function TodayPage() {
   return (
     <div className="today-page">
       <p className="today-date">
+        <BrandMark size={18} />
         {now.toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" })}
       </p>
       <h1>

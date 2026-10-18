@@ -27,15 +27,17 @@ function toggleTheme() {
 }
 
 // Wide screens: one top bar with the pages, theme and Sign out. Phones: no
-// bar, just the app icon and the ☰ menu in a slim row above the page's big
-// title, like the iPhone's own apps; once you scroll, a slim bar with the
-// page name fades in. The pages
+// bar; your initial in a circle sits level with the page's big title (its
+// menu has notifications, the tour, theme and Sign out), like the App Store;
+// once you scroll, a slim bar with the app icon and page name fades in. The pages
 // move to a tab bar along the bottom, one thumb-tap away.
 export default function NavBar() {
   const pathname = usePathname();
   const { user, signOut } = useAuth();
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
+  const name = user?.user_metadata?.full_name || user?.user_metadata?.name || user?.email || "";
+  const initial = name.trim().charAt(0).toUpperCase() || "•";
   const pageName = NAV_LINKS.find(({ href }) => isActive(pathname, href))?.label || "PathFinder";
 
   useEffect(() => {
@@ -47,8 +49,9 @@ export default function NavBar() {
 
   return (
     <>
-      <nav className={`topnav ${scrolled ? "scrolled" : ""}`}>
+      <nav className={`topnav ${scrolled ? "scrolled" : ""} ${pathname === "/" ? "on-today" : ""}`}>
         <span className="topnav-title" aria-hidden="true">
+          <BrandMark size={20} />
           {pageName}
         </span>
         <Link href="/" className="brand">
@@ -78,8 +81,10 @@ export default function NavBar() {
         </div>
         <div className="topnav-phone">
           <Menu
-            icon="menu"
-            label="Menu"
+            label="Account and settings"
+            className="avatar-trigger"
+            trigger={<span className="avatar">{initial}</span>}
+            heading={user?.email}
             items={[
               { label: "Notifications", onClick: () => setNotificationsOpen(true) },
               { label: "Tour of this page", onClick: replayTour },

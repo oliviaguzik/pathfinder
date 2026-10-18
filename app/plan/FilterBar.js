@@ -80,13 +80,14 @@ export default function FilterBar({ filters, onFiltersChange, sortBy, onSortChan
         )}
       </div>
 
-      <div className="row" style={{ gap: 4 }}>
+      <div className="row view-switch" style={{ gap: 4 }}>
         <button
           className={`ghost view-toggle-btn ${view === "list" ? "active" : ""}`}
           onClick={() => onViewChange("list")}
           aria-label="List view"
         >
           <Icon name="list" size={15} />
+          <span className="view-switch-label">List</span>
         </button>
         <button
           className={`ghost view-toggle-btn ${view === "calendar" ? "active" : ""}`}
@@ -94,6 +95,7 @@ export default function FilterBar({ filters, onFiltersChange, sortBy, onSortChan
           aria-label="Calendar view"
         >
           <Icon name="calendar" size={15} />
+          <span className="view-switch-label">Calendar</span>
         </button>
       </div>
     </div>

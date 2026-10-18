@@ -4,9 +4,10 @@ import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import Icon from "./Icon";
 
-// A "⋯" button (or another `icon`) that opens a small list of actions,
-// right-aligned under it. items: [{ label, onClick, danger }]
-export default function Menu({ items, label = "More actions", icon = "more", className = "" }) {
+// A "⋯" button (or another `icon`, or any `trigger` content) that opens a
+// small list of actions, right-aligned under it, with an optional `heading`
+// line on top. items: [{ label, onClick, danger }]
+export default function Menu({ items, label = "More actions", icon = "more", trigger, heading, className = "" }) {
   const [open, setOpen] = useState(false);
   const [coords, setCoords] = useState({ top: 0, right: 0 });
   const triggerRef = useRef(null);
@@ -60,7 +61,7 @@ export default function Menu({ items, label = "More actions", icon = "more", cla
           setOpen((o) => !o);
         }}
       >
-        <Icon name={icon} size={icon === "more" ? 16 : 18} />
+        {trigger || <Icon name={icon} size={icon === "more" ? 16 : 18} />}
       </button>
       {open &&
         typeof document !== "undefined" &&
@@ -71,6 +72,7 @@ export default function Menu({ items, label = "More actions", icon = "more", cla
             role="menu"
             style={{ top: coords.top, left: coords.right }}
           >
+            {heading && <div className="menu-heading">{heading}</div>}
             {items.map((item) => (
               <button
                 key={item.label}

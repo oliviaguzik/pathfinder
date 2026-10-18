@@ -2665,3 +2665,62 @@ button.danger-text:hover { color: var(--danger); background: color-mix(in srgb, 
   border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
 }
 .task-row.swipe-ready::before, .task-row.swipe-ready::after { opacity: 1; }
+/* A swiped row slides under the card's edge, not out over the page. */
+@media (pointer: coarse), (max-width: 600px) {
+  .card { overflow-x: clip; }
+}
+
+/* ---------- One header on every page (phones) ----------
+   Big title on the left, your initial in a circle on the right, level with it
+   (on Today, level with the greeting under the date). The app icon sits by
+   Today's date and in the slim bar that appears on scroll. */
+.avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-size: 15px;
+  font-weight: 650;
+}
+button.avatar-trigger { padding: 2px; border-radius: 50%; }
+.menu-heading {
+  max-width: 240px;
+  padding: 8px 14px 8px;
+  margin-bottom: 4px;
+  border-bottom: 1px solid var(--border-soft);
+  font-size: 12.5px;
+  color: var(--muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.today-date .brand-mark { display: none; }
+.view-switch-label { display: none; }
+
+@media (max-width: 600px) {
+  .topnav { height: calc(70px + env(safe-area-inset-top, 0px)); }
+  .topnav { justify-content: flex-end; }
+  .topnav > .brand { display: none; }
+  .topnav-phone { margin-right: 8px; }
+  .topnav.on-today:not(.scrolled) .topnav-phone { transform: translateY(24px); }
+  .topnav.scrolled { height: calc(54px + env(safe-area-inset-top, 0px)); }
+  .topnav-title { display: flex; align-items: center; justify-content: center; gap: 8px; line-height: 54px; }
+  .container { padding-top: calc(16px + env(safe-area-inset-top, 0px)); }
+  h1 { padding-right: 52px; }
+  .today-date { display: flex; align-items: center; gap: 8px; }
+  .today-date .brand-mark { display: inline-flex; }
+
+  /* Plan: "List | Calendar" in words, as one switch (no lookalike ☰ icon). */
+  .view-switch { gap: 0 !important; padding: 2px; border-radius: 10px; background: var(--surface-sunken); border: 1px solid var(--border-soft); }
+  .view-switch .view-toggle-btn { width: auto; height: 32px; padding: 0 12px; border-radius: 8px; font-size: 13px; font-weight: 600; color: var(--muted); }
+  .view-switch .view-toggle-btn svg { display: none; }
+  .view-switch .view-toggle-btn.active { background: var(--surface); color: var(--text); box-shadow: var(--shadow-sm); }
+  .view-switch-label { display: inline; }
+
+  /* Goals: add with the same round + as Plan; always cards on phones. */
+  .add-goal-btn, .goals-view-toggle { display: none !important; }
+}

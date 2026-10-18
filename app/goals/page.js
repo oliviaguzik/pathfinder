@@ -784,6 +784,9 @@ export default function GoalsPage() {
             </button>
           </div>
           <button className="primary add-goal-btn" onClick={() => setAddOpen(true)}>+ Add goal</button>
+          <button type="button" className="fab" onClick={() => setAddOpen(true)} aria-label="Add goal">
+            <Icon name="plus" size={24} />
+          </button>
         </div>
       </div>
 
