@@ -5,7 +5,7 @@ A personal web app replacing a Notion-based task/goal tracker. It's a
 Next.js app with a Supabase (Postgres) backend, deployed on Vercel.
 
 ## Tech stack
-- Next.js (App Router, JavaScript, no TypeScript)
+- Next.js 16 with React 19 (App Router, JavaScript, no TypeScript; Turbopack for dev and build)
 - Supabase for the database (Postgres) and auth — connected via
   `@supabase/supabase-js` in `lib/supabaseClient.js`, using env vars
   `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY`
@@ -324,9 +324,6 @@ Clean, modern, calm — closer to Things/Todoist than a form-based admin tool.
 - Normal-case field labels, not small uppercase
 
 ## Not yet built (roadmap)
-- **Upgrade Next.js** (14 → 16): npm audit lists advisories for Next 14; most
-  are for features PathFinder doesn't use (image optimizer, rewrites,
-  middleware, server actions), but staying on a supported version matters.
 - **Own email sender** for sign-in codes (e.g. Resend as custom SMTP in
   Supabase) before inviting other people: Supabase's built-in sender only
   allows a few emails an hour.
