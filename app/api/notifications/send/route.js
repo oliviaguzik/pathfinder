@@ -54,7 +54,7 @@ export async function POST(request) {
         .upsert({ user_id: settings.user_id, kind: n.kind, ref: n.ref }, { onConflict: "user_id,kind,ref", ignoreDuplicates: true })
         .select();
       if (!claimed?.length) continue;
-      sent += await sendToDevices(admin, userDevices, { title: n.title, body: n.body, url: n.url, tag: `${n.kind}:${n.ref}` });
+      sent += (await sendToDevices(admin, userDevices, { title: n.title, body: n.body, url: n.url, tag: `${n.kind}:${n.ref}` })).delivered;
     }
   }
   return NextResponse.json({ ok: true, sent });
