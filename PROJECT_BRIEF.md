@@ -132,7 +132,7 @@ answers "what matters today?" and leaves adding/planning to Tasks.
 - Plan list view is two columns (stacked on narrow screens). **Scheduled**:
   Overdue, then one heading per day (Today, Tomorrow, "Mon, Oct 19") with
   that day's events (next two weeks, `EVENT_LOOKAHEAD_DAYS`) then its open
-  tasks, from `buildAgenda`; Completed (collapsible) at the bottom.
+  tasks, from `buildAgenda`.
   **No date**: undated open tasks. No lines between rows; events are
   task-shaped rows with a teal clock and time. Drag a task onto a day
   heading or a task in another day to give it that date, or into No date to
@@ -289,8 +289,9 @@ Clean, modern, calm — closer to Things/Todoist than a form-based admin tool.
 - Subtle tinted background with a soft glow at the top; white cards with
   light borders; translucent sticky nav; light and dark themes
 - Plan page: a one-line quick-add bar (options expand while typing or via
-  "Options"); the list is Scheduled (by day) beside No date, with a
-  collapsible Completed section: newest first, grouped Today /
+  "Options"); the list is Scheduled (by day) beside No date, and below
+  both a "Completed tasks" section (closed until opened, like "Finished
+  goals" on Goals; opens to a full-width card): newest first, grouped Today /
   Yesterday / Earlier this week / Older (`groupCompleted`), 10 at a time
   with "Show more", and a link to Review for longer history
 - With a mouse, a row's buttons float over its right end on hover, so

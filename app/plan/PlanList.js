@@ -13,7 +13,8 @@ import Link from "next/link";
 const COMPLETED_PAGE = 10;
 
 // The list view: Scheduled (Overdue, then a heading per day with its events
-// and tasks, then Completed) beside No date. Drag a task onto a day or into
+// and tasks) beside No date, and below both "Completed tasks" (closed until
+// opened, like "Finished goals" on Goals). Drag a task onto a day or into
 // No date to change its date; within a day, dragging reorders.
 export default function PlanList({ agenda, taskGroups, hiddenEventCount, filtersOn, showDone, sortBy, onSortChange }) {
   const { tasks, loading, moveTaskToDate, setTaskPosition } = usePlan();
@@ -119,85 +120,88 @@ export default function PlanList({ agenda, taskGroups, hiddenEventCount, filters
   }
 
   return (
-    <div className="plan-columns">
-      <div className="card task-list-card plan-scheduled">
-        <h2 className="plan-col-title">Scheduled</h2>
-        {loading && <Skeleton rows={4} />}
-        {!loading && hiddenEventCount > 0 && (
-          <p className="list-note">
-            <Icon name="clock" size={13} />
-            {hiddenEventCount === 1 ? "1 event is" : `${hiddenEventCount} events are`} hidden while filters are on.
-          </p>
-        )}
-        {!loading && agenda.length === 0 && (
-          <p className="plan-empty">
-            {filtersOn ? "No scheduled tasks match these filters." : "Nothing scheduled. Give a task a date, or add an event."}
-          </p>
-        )}
-        {agenda.map((day) => (
-          <section
-            className={`plan-day ${day.key === "overdue" ? "overdue" : ""} ${dragOverDay === day.key ? "drag-over" : ""}`}
-            key={day.key}
-            {...(day.key !== "overdue" ? dropZone(day.key, day.key) : {})}
-          >
-            <h3 className="plan-day-label">{day.label}</h3>
-            {day.events.map((ev) => (
-              <ListEvent key={`e${ev.id}`} event={ev} />
-            ))}
-            {day.tasks.map((t) => row(t, { showDue: day.key === "overdue", plainDue: true }))}
-          </section>
-        ))}
-        {taskGroups.completed.length > 0 && (
-          <section className="task-group task-group-completed">
-            <h2 className="task-group-header">
-              <button
-                type="button"
-                className="task-group-toggle"
-                aria-expanded={completedOpen}
-                onClick={() => setShowCompleted((v) => !v)}
-              >
-                <span className={`task-group-chevron ${completedOpen ? "open" : ""}`}>
-                  <Icon name="chevronRight" size={14} />
-                </span>
-                Completed
-                <span className="task-group-count">{taskGroups.completed.length}</span>
-              </button>
-            </h2>
-            {completedOpen && (
-              <>
-                {completedGroups.map((g) => (
-                  <div key={g.key}>
-                    <div className="completed-subhead">{g.label}</div>
-                    {g.tasks.map((t) =>
-                      row(t, { doneOn: g.key === "older" && t.completed_at ? localDateOf(t.completed_at) : null })
-                    )}
-                  </div>
-                ))}
-                <div className="completed-footer">
-                  {completedHidden > 0 && (
-                    <button type="button" className="ghost small-btn" onClick={() => setCompletedLimit((n) => n + COMPLETED_PAGE)}>
-                      Show more ({completedHidden})
-                    </button>
-                  )}
-                  <Link className="completed-review-link" href="/review">
-                    See your week in Review <Icon name="chevronRight" size={13} />
-                  </Link>
-                </div>
-              </>
-            )}
-          </section>
-        )}
+    <>
+      <div className="plan-columns">
+        <div className="card task-list-card plan-scheduled">
+          <h2 className="plan-col-title">Scheduled</h2>
+          {loading && <Skeleton rows={4} />}
+          {!loading && hiddenEventCount > 0 && (
+            <p className="list-note">
+              <Icon name="clock" size={13} />
+              {hiddenEventCount === 1 ? "1 event is" : `${hiddenEventCount} events are`} hidden while filters are on.
+            </p>
+          )}
+          {!loading && agenda.length === 0 && (
+            <p className="plan-empty">
+              {filtersOn ? "No scheduled tasks match these filters." : "Nothing scheduled. Give a task a date, or add an event."}
+            </p>
+          )}
+          {agenda.map((day) => (
+            <section
+              className={`plan-day ${day.key === "overdue" ? "overdue" : ""} ${dragOverDay === day.key ? "drag-over" : ""}`}
+              key={day.key}
+              {...(day.key !== "overdue" ? dropZone(day.key, day.key) : {})}
+            >
+              <h3 className="plan-day-label">{day.label}</h3>
+              {day.events.map((ev) => (
+                <ListEvent key={`e${ev.id}`} event={ev} />
+              ))}
+              {day.tasks.map((t) => row(t, { showDue: day.key === "overdue", plainDue: true }))}
+            </section>
+          ))}
+        </div>
+
+        <div className={`card task-list-card plan-undated ${dragOverDay === "noDate" ? "drag-over" : ""}`} {...dropZone("noDate", null)}>
+          <h2 className="plan-col-title">
+            No date
+            {taskGroups.noDate.length > 0 && <span className="task-group-count">{taskGroups.noDate.length}</span>}
+          </h2>
+          {loading && <Skeleton rows={3} />}
+          {!loading && taskGroups.noDate.length === 0 && <p className="plan-empty">Every task has a date.</p>}
+          {taskGroups.noDate.map((t) => row(t))}
+        </div>
       </div>
 
-      <div className={`card task-list-card plan-undated ${dragOverDay === "noDate" ? "drag-over" : ""}`} {...dropZone("noDate", null)}>
-        <h2 className="plan-col-title">
-          No date
-          {taskGroups.noDate.length > 0 && <span className="task-group-count">{taskGroups.noDate.length}</span>}
-        </h2>
-        {loading && <Skeleton rows={3} />}
-        {!loading && taskGroups.noDate.length === 0 && <p className="plan-empty">Every task has a date.</p>}
-        {taskGroups.noDate.map((t) => row(t))}
-      </div>
-    </div>
+      {taskGroups.completed.length > 0 && (
+        <section className="finished-goals plan-completed task-group-completed">
+          <h2 className="task-group-header">
+            <button
+              type="button"
+              className="task-group-toggle"
+              aria-expanded={completedOpen}
+              onClick={() => setShowCompleted((v) => !v)}
+            >
+              <span className={`task-group-chevron ${completedOpen ? "open" : ""}`}>
+                <Icon name="chevronRight" size={14} />
+              </span>
+              Completed tasks
+              <span className="task-group-count">{taskGroups.completed.length}</span>
+            </button>
+          </h2>
+          {completedOpen && (
+            <div className="card task-list-card plan-completed-list">
+              {completedGroups.map((g) => (
+                <div key={g.key}>
+                  <div className="completed-subhead">{g.label}</div>
+                  {g.tasks.map((t) =>
+                    row(t, { doneOn: g.key === "older" && t.completed_at ? localDateOf(t.completed_at) : null })
+                  )}
+                </div>
+              ))}
+              <div className="completed-footer">
+                {completedHidden > 0 && (
+                  <button type="button" className="ghost small-btn" onClick={() => setCompletedLimit((n) => n + COMPLETED_PAGE)}>
+                    Show more ({completedHidden})
+                  </button>
+                )}
+                <Link className="completed-review-link" href="/review">
+                  See your week in Review <Icon name="chevronRight" size={13} />
+                </Link>
+              </div>
+            </div>
+          )}
+        </section>
+      )}
+    </>
   );
 }
