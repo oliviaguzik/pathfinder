@@ -1,17 +1,16 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Icon from "../components/Icon";
-import HighlightInput from "../components/HighlightInput";
-import Popover from "../components/Popover";
-import TaskFields from "../components/TaskFields";
-import EventFields from "../components/EventFields";
+import Icon from "./Icon";
+import HighlightInput from "./HighlightInput";
+import Popover from "./Popover";
+import TaskFields from "./TaskFields";
+import EventFields from "./EventFields";
 import { eventFieldsFromForm, formatTime, newEventForm } from "../../lib/events";
 import { agendaDayLabel } from "../../lib/taskGroups";
 import { parseQuickAdd } from "../../lib/parseQuickAdd";
 import { EMPTY_TASK_FORM, taskFieldsFromForm } from "../../lib/taskForm";
 import { notifyWarning } from "../../lib/notify";
-import { usePlan } from "./PlanContext";
 
 // Finished and paused goals are closed (as on the Goals page), so they aren't
 // offered for new links.
@@ -37,9 +36,9 @@ function hourLater(time) {
 // plain words ("Dentist fri 3pm") are picked up, shown under the bar, and can
 // be ignored with ×.
 // In the phone sheet (`inSheet`), options are always open, the box is focused,
-// and `onAdded` closes the sheet after a save.
-export default function AddBar({ inSheet = false, onAdded }) {
-  const { goals, addTask, addEvent } = usePlan();
+// and `onAdded` closes the sheet after a save. The page passes its `goals` and
+// its `addTask` / `addEvent` (each returns { error }); see AddAnything.
+export default function AddBar({ goals, addTask, addEvent, defaultDueDate = "", inSheet = false, onAdded }) {
   const [kind, setKind] = useState("task");
   const [newTask, setNewTask] = useState(EMPTY_TASK_FORM);
   const [newEvent, setNewEvent] = useState(() => newEventForm());
@@ -63,8 +62,11 @@ export default function AddBar({ inSheet = false, onAdded }) {
   }, [name]);
   const example = examples[exampleIndex % examples.length];
 
-  // What will be saved: the typed date / time win over the Options fields.
-  const taskForm = parsed?.date ? { ...newTask, dueDate: parsed.date } : newTask;
+  // What will be saved: the typed date / time win over the Options fields,
+  // which win over the page's default (Today adds tasks for today).
+  const taskForm = parsed?.date
+    ? { ...newTask, dueDate: parsed.date }
+    : { ...newTask, dueDate: newTask.dueDate || defaultDueDate };
   const eventForm = parsed
     ? {
         ...newEvent,

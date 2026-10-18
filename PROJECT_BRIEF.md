@@ -56,7 +56,9 @@ answers "what matters today?" and leaves adding/planning to Tasks.
 - A slim gold main-goal line (only the goal marked main): name, % done,
   next step (soonest open task) and "Add to focus". When that step is
   already on the Today card it says so instead of repeating it
-- One "Today" card ("+ Event" in its header): Focus first (star up to 3
+- The same Add box as Plan (`AddAnything`: the Add bar on wide screens, the
+  round + on phones); a task added here with no date is due today
+- One "Today" card: Focus first (star up to 3
   tasks, `tasks.focus_date` = today), then today's events by time (teal
   rows, ended ones fade) and the due tasks: overdue (oldest first) then due today. A one-line note when the day is empty
 - Rescheduling: wherever a task's date shows (overdue rows on Today and
@@ -111,10 +113,10 @@ answers "what matters today?" and leaves adding/planning to Tasks.
 - One Add bar for everything: a Task / Event switch at its start (Task by
   default). In Event mode the bar turns teal and its options are date,
   all day, start/end (defaulting to the next full hour) and location
-- Shortcuts open the same event form (`EventFields`) with the date filled
-  in: the filled teal "+ Event" button in the calendar header, "Add an
-  event on this day" in the day panel, and "+ Add event" on Today. Click
-  any event to edit or delete it
+- One place to add: the Add bar (`AddAnything`), the same on Today and Plan.
+  The only shortcut is "Add an event on this day" in the calendar's day
+  panel, which opens the event form with that date filled in. Click any
+  event to edit or delete it
 - Plan list view is two columns (stacked on narrow screens). **Scheduled**:
   Overdue, then one heading per day (Today, Tomorrow, "Mon, Oct 19") with
   that day's events (next two weeks, `EVENT_LOOKAHEAD_DAYS`) then its open

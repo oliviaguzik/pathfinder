@@ -4,6 +4,12 @@
 export const TOURS = {
   today: [
     {
+      target: ".addbar-inline .quick-add, .fab",
+      title: "Add anything",
+      body: "Add a task or an event from here or from Plan; it's the same box. A task with no date typed is due today.",
+      phoneBody: "Tap + to add a task or event, here or on Plan. A task with no date typed is due today.",
+    },
+    {
       target: ".today-card",
       title: "Your day in one place",
       body: "Star up to 3 tasks to focus on. Today's events and anything due or overdue sit below. Tick a task when it's done; you can always Undo.",
@@ -21,7 +27,7 @@ export const TOURS = {
   ],
   plan: [
     {
-      target: ".plan-addbar-inline .quick-add, .fab",
+      target: ".addbar-inline .quick-add, .fab",
       title: "Add anything",
       body: "Switch between Task and Event, then type. Dates and times in plain words, like “Dentist fri 3pm”, are filled in for you. The ⓘ shows more examples.",
       phoneBody: "Tap + to add a task or event. Dates and times in plain words, like “Dentist fri 3pm”, are filled in for you.",

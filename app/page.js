@@ -10,6 +10,7 @@ import EventRow from "./components/EventRow";
 import SwipeRow from "./components/SwipeRow";
 import TaskEditModal from "./components/TaskEditModal";
 import PageTour from "./components/PageTour";
+import AddAnything from "./components/AddAnything";
 import { eventTimeLabel, occurrencesBetween, sortEvents } from "../lib/events";
 import { deleteTaskAndSync, restoreTask, toggleTaskDone, undoTaskDone } from "../lib/taskActions";
 import { notifyUndo } from "../lib/notify";
@@ -17,6 +18,7 @@ import { openOnKey, openOnRowClick } from "../lib/rowClick";
 import { removeEventWithUndo } from "../lib/eventActions";
 import { todayLocalISODate } from "../lib/dates";
 import { useAuth } from "../lib/AuthProvider";
+import { nextPosition } from "../lib/reorder";
 import Link from "next/link";
 
 const FOCUS_LIMIT = 3;
@@ -43,7 +45,7 @@ export default function TodayPage() {
   const [goals, setGoals] = useState([]);
   // Events up to today (a repeating one may have started earlier); see todaysEvents.
   const [events, setEvents] = useState([]);
-  // The event dialog: { event } to edit one, { date } to add one today.
+  // The event dialog: { event } to edit one.
   const [eventDialog, setEventDialog] = useState(null);
   const [editingTask, setEditingTask] = useState(null);
   // Just-ticked tasks stay put (shown as done) for a moment before leaving the list.
@@ -110,6 +112,22 @@ export default function TodayPage() {
 
   function goalName(id) {
     return goals.find((g) => g.id === id)?.name || "";
+  }
+
+  // Adding from Today (the same Add box as Plan); a task with no date typed is
+  // due today, so it shows up here.
+  async function addTask(fields) {
+    const { error } = await supabase
+      .from("tasks")
+      .insert({ ...fields, status: "To Do", position: nextPosition(tasks), user_id: user.id });
+    loadData();
+    return { error };
+  }
+
+  async function addEvent(fields) {
+    const { error } = await supabase.from("events").insert(fields);
+    if (!error) loadData();
+    return { error };
   }
 
   // Changes show on screen first, then save; the reload afterwards brings in
@@ -268,6 +286,8 @@ export default function TodayPage() {
       </h1>
       {!loading && <p className="page-sub">{summary.join(" · ")}</p>}
 
+      <AddAnything goals={goals} addTask={addTask} addEvent={addEvent} defaultDueDate={today} />
+
       {loading ? (
         <div className="card">
           <Skeleton rows={4} />
@@ -311,13 +331,6 @@ export default function TodayPage() {
           <section className="card today-card">
             <div className="today-card-head">
               <h2>Today</h2>
-              <button
-                type="button"
-                className="ghost small-btn add-event-link"
-                onClick={() => setEventDialog({ date: today })}
-              >
-                <Icon name="plus" size={13} /> Event
-              </button>
             </div>
 
             {(focus.length > 0 || todayList.length > 0) && (

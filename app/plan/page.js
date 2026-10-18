@@ -2,8 +2,6 @@
 
 import { useEffect, useState } from "react";
 import EventModal from "../components/EventModal";
-import Modal from "../components/Modal";
-import Icon from "../components/Icon";
 import TaskEditModal from "../components/TaskEditModal";
 import PageTour from "../components/PageTour";
 import { EVENT_LOOKAHEAD_DAYS, buildAgenda, groupTasksByDue } from "../../lib/taskGroups";
@@ -12,7 +10,7 @@ import { toISODateLocal } from "../../lib/dates";
 import { sortTasksList } from "../../lib/taskSort";
 import { PlanContext } from "./PlanContext";
 import { usePlanData } from "./usePlanData";
-import AddBar from "./AddBar";
+import AddAnything from "../components/AddAnything";
 import FilterBar, { NO_FILTERS, activeFilterCount } from "./FilterBar";
 import PlanList from "./PlanList";
 import PlanCalendar from "./PlanCalendar";
@@ -27,8 +25,6 @@ export default function PlanPage() {
   // The dialogs: the task being edited, and { event } to edit one or { date } to add one.
   const [editingTask, setEditingTask] = useState(null);
   const [eventDialog, setEventDialog] = useState(null);
-  // Phones: the Add bar lives in a sheet opened by the floating + button.
-  const [addSheetOpen, setAddSheetOpen] = useState(false);
 
   useEffect(() => {
     const stored = localStorage.getItem("tasksView");
@@ -79,15 +75,7 @@ export default function PlanPage() {
         <h1>Plan</h1>
         <p className="page-sub page-sub-intro">Your tasks and events, all in one place.</p>
 
-        <div className="plan-addbar-inline">
-          <AddBar />
-        </div>
-        <button type="button" className="fab" onClick={() => setAddSheetOpen(true)} aria-label="Add a task or event">
-          <Icon name="plus" size={24} />
-        </button>
-        <Modal open={addSheetOpen} onClose={() => setAddSheetOpen(false)} title="Add">
-          <AddBar inSheet onAdded={() => setAddSheetOpen(false)} />
-        </Modal>
+        <AddAnything goals={data.goals} addTask={data.addTask} addEvent={data.addEvent} />
         <FilterBar
           filters={filters}
           onFiltersChange={setFilters}

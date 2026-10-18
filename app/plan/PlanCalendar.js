@@ -170,9 +170,6 @@ export default function PlanCalendar({ agenda, visibleTasks, dialogOpen }) {
               <span className="calendar-title">{label}</span>
             </div>
             <div className="row" style={{ gap: 8 }}>
-              <button className="ghost new-event-btn" onClick={() => newEventOn(mode === "day" ? dayStr : toISODateLocal(new Date()))}>
-                <Icon name="plus" size={13} /> Event
-              </button>
               <button className="ghost" onClick={() => setCalendarDate(new Date())}>Today</button>
               <div className="segmented" role="group" aria-label="Calendar range">
                 {["month", "week", "day"].map((m) => (

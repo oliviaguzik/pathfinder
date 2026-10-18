@@ -1841,27 +1841,6 @@ button.small-btn:hover { color: var(--accent); }
 }
 .calendar-legend-check { width: 11px; height: 11px; border-radius: 50%; border: 1.5px solid var(--muted-soft); }
 .day-panel-event-btn { display: inline-flex; align-items: center; gap: 5px; margin-top: 10px; }
-/* Filled so "+ Event" stands out as the way to add an event */
-/* "+ Event": a see-through teal tint, so it stands out without shouting. */
-button.new-event-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  background: color-mix(in srgb, var(--event) 14%, transparent);
-  border-color: color-mix(in srgb, var(--event) 40%, transparent);
-  color: var(--event);
-  font-weight: 600;
-  transition: background 0.15s, border-color 0.15s, box-shadow 0.15s, transform 0.15s;
-}
-button.new-event-btn:hover {
-  background: color-mix(in srgb, var(--event) 26%, transparent);
-  border-color: color-mix(in srgb, var(--event) 65%, transparent);
-  color: var(--event);
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px color-mix(in srgb, var(--event) 20%, transparent);
-}
-button.new-event-btn:active { transform: translateY(0); box-shadow: none; }
-
 /* The form's own "Add event" / "Save" stays solid: it's the final action. */
 button.primary.event-primary {
   background: var(--event-strong);
@@ -1894,8 +1873,6 @@ button.primary.event-primary:active { transform: translateY(0); box-shadow: none
   .add-kind { order: -1; }
 }
 
-button.add-event-link { margin-left: auto; display: inline-flex; align-items: center; gap: 4px; color: var(--event); }
-button.add-event-link:hover { color: var(--event); background: var(--event-soft); }
 
 /* Events in the task list: a task-shaped row, teal, with a clock in the checkbox spot.
    The left padding skips the drag-handle column so titles line up with tasks. */
@@ -2285,7 +2262,7 @@ button.quick-add-parsed-ignore { padding: 2px 6px; font-size: 14px; color: var(-
 /* Floating + (phones, Plan): opens the Add sheet; the inline Add bar hides. */
 .fab { display: none; }
 @media (max-width: 600px) {
-  .plan-addbar-inline { display: none; }
+  .addbar-inline { display: none; }
   button.fab {
     position: fixed;
     right: 18px;
