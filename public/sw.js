@@ -4,7 +4,7 @@
 // - the app's versioned code files and icons are kept on the phone so it opens fast.
 // Data (Supabase) and sign-in requests go straight to the network, never stored here.
 // It also shows notifications sent by the server, and opens the app when one is tapped.
-const CACHE = "pathfinder-v2";
+const CACHE = "pathfinder-v3";
 const OFFLINE_URL = "/offline.html";
 
 self.addEventListener("install", (event) => {

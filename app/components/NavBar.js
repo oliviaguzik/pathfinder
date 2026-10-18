@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import ThemeToggle, { applyTheme } from "./ThemeToggle";
 import Menu from "./Menu";
 import Icon from "./Icon";
+import BrandMark from "./BrandMark";
 import { useAuth } from "../../lib/AuthProvider";
 import { replayTour } from "../../lib/tourState";
 import NotificationSettings from "./NotificationSettings";
@@ -25,8 +26,9 @@ function toggleTheme() {
 }
 
 // Wide screens: one top bar with the pages, theme and Sign out. Phones: no
-// bar, just the ☰ menu beside the page's big title, like the iPhone's own
-// apps; once you scroll, a slim bar with the page name fades in. The pages
+// bar, just the app icon and the ☰ menu in a slim row above the page's big
+// title, like the iPhone's own apps; once you scroll, a slim bar with the
+// page name fades in. The pages
 // move to a tab bar along the bottom, one thumb-tap away.
 export default function NavBar() {
   const pathname = usePathname();
@@ -49,12 +51,7 @@ export default function NavBar() {
           {pageName}
         </span>
         <a href="/" className="brand">
-          <span className="brand-mark" aria-hidden="true">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M5 21V4" />
-              <path d="M5 5h12l-2.8 3.2L17 11.5H5" />
-            </svg>
-          </span>
+          <BrandMark />
           <span className="brand-name">PathFinder</span>
         </a>
         <div className="row topnav-wide" style={{ gap: 4 }}>

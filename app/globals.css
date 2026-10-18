@@ -125,6 +125,8 @@ body {
   font-size: 14px;
   font-weight: 500;
 }
+.login-brand { display: flex; flex-direction: column; align-items: center; gap: 10px; margin-bottom: 6px; }
+.login-brand .brand { font-size: 20px; }
 .login-divider {
   display: flex;
   align-items: center;
@@ -200,10 +202,8 @@ body {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 26px;
-  height: 26px;
-  border-radius: 8px;
-  background: var(--accent);
+  background: linear-gradient(160deg, #7b7bf0, #4f4fcf);
+  box-shadow: 0 1px 3px rgba(79, 79, 207, 0.35);
   flex-shrink: 0;
 }
 .navlinks { display: flex; gap: 4px; }
@@ -2478,7 +2478,8 @@ button.danger-text:hover { color: var(--danger); background: color-mix(in srgb, 
     -webkit-backdrop-filter: none;
     transition: background 0.2s, border-color 0.2s;
   }
-  .topnav .brand { display: none; }
+  .topnav { justify-content: space-between; }
+  .topnav .brand-name { display: none; }
   .topnav-title {
     display: block;
     position: absolute;
@@ -2546,4 +2547,56 @@ button.danger-text:hover { color: var(--danger); background: color-mix(in srgb, 
   select, input[type="text"], input[type="date"], input[type="number"], input[type="time"],
   input[type="datetime-local"], input[type="email"], textarea, .select-trigger,
   .quick-add input.quick-add-input, .quick-add-task-row input { font-size: 16px; }
+}
+
+/* ---------- Phones: feel like a native app ---------- */
+@media (max-width: 600px) {
+  /* Tab bar like the iPhone's: bigger icons, small labels, no glow or press box. */
+  .tabbar { padding: 4px 4px calc(2px + env(safe-area-inset-bottom, 0px)); }
+  .tabbar a { gap: 2px; padding: 5px 0 3px; font-size: 10.5px; font-weight: 550; border-radius: 0; }
+  .tabbar a svg { width: 25px; height: 25px; }
+  .tabbar a.active svg { filter: none; }
+  .tabbar a:active { background: transparent; opacity: 0.6; }
+
+  /* Lists like the iPhone's: a hairline between rows, starting after the
+     checkbox (as in Reminders). */
+  .card .task-row + .task-row {
+    background-image: linear-gradient(var(--border-soft), var(--border-soft));
+    background-size: calc(100% - 44px) 1px;
+    background-position: right top;
+    background-repeat: no-repeat;
+  }
+}
+
+/* The iPhone's own font (San Francisco) on Apple phones; Inter elsewhere. */
+@supports (font: -apple-system-body) {
+  @media (max-width: 600px) {
+    body { font-family: -apple-system, BlinkMacSystemFont, system-ui, sans-serif; }
+  }
+}
+
+/* Touch screens: no grey flash or text selection when tapping buttons, no
+   double-tap zoom delay, and rows darken while pressed like native lists. */
+@media (pointer: coarse) {
+  html { -webkit-tap-highlight-color: transparent; }
+  button, a, .clickable-row, .tabbar, .topnav, .segmented {
+    -webkit-user-select: none;
+    user-select: none;
+    -webkit-touch-callout: none;
+  }
+  button, a, input, select, textarea, .clickable-row { touch-action: manipulation; }
+  .task-row.clickable-row:active, .undated-task-row.clickable-row:active { background-color: var(--surface-sunken); }
+  button:active:not(:disabled) { opacity: 0.7; }
+}
+
+/* Sign-in on phones: the whole screen, like an app's welcome screen, not a card. */
+@media (max-width: 600px) {
+  .login-screen { padding: calc(24px + env(safe-area-inset-top, 0px)) 24px calc(24px + env(safe-area-inset-bottom, 0px)); }
+  .login-card { max-width: 360px; padding: 0; border: none; background: transparent; box-shadow: none; }
+  .login-brand { gap: 14px; margin-bottom: 8px; }
+  .login-brand .brand-mark { width: 76px !important; height: 76px !important; border-radius: 20px !important; }
+  .login-brand .brand-mark svg { width: 54px; height: 54px; }
+  .login-brand .brand { font-size: 26px; letter-spacing: -0.02em; }
+  .login-card .page-sub { font-size: 15px; margin-bottom: 32px !important; }
+  .login-card .google-signin-btn, .login-card .login-form input, .login-card .login-form button { height: 48px; border-radius: 12px; font-size: 16px; }
 }

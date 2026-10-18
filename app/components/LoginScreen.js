@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useAuth } from "../../lib/AuthProvider";
+import BrandMark from "./BrandMark";
 
 // Sign in with Google, or with a one-time code sent by email (no password).
 export default function LoginScreen() {
@@ -36,7 +37,10 @@ export default function LoginScreen() {
   return (
     <div className="login-screen">
       <div className="login-card">
-        <div className="brand" style={{ fontSize: 18, marginBottom: 4 }}>PathFinder</div>
+        <div className="login-brand">
+          <BrandMark size={56} />
+          <div className="brand">PathFinder</div>
+        </div>
 
         {step === "email" ? (
           <>
