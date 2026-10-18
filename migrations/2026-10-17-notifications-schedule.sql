@@ -1,5 +1,5 @@
 -- Checks for due notifications every 5 minutes by calling the app's
--- /api/notifications/send. Run once in Supabase AFTER 2026-10-18-notifications.sql
+-- /api/notifications/send. Run once in Supabase AFTER 2026-10-17-notifications.sql
 -- and after the app (with its secret keys) is live on Vercel:
 -- SQL Editor -> New query -> paste -> replace the two <...> parts -> Run.
 --

@@ -236,7 +236,7 @@ the README for which file does what). Title "Plan", subtitle "Your tasks and eve
 - What's due: `dueNotifications` in `lib/notifications.js` (tested). Sending:
   `app/api/notifications/send` (POST, `Authorization: Bearer CRON_SECRET`,
   called every 5 min by Supabase pg_cron, see
-  `migrations/2026-10-18-notifications-schedule.sql`) uses the service key
+  `migrations/2026-10-17-notifications-schedule.sql`) uses the service key
   (`lib/server/supabaseAdmin.js`, server-only) and `web-push`
   (`lib/server/push.js`); each notification is claimed in
   `sent_notifications` first so it goes out once. `public/sw.js` shows it and

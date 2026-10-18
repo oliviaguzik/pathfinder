@@ -44,7 +44,7 @@ Notifications (event reminders, morning summary, overdue nudge, task
 reminders) need a few one-time steps. Secrets go only in `.env.local` and
 Vercel's settings, never in the code or anywhere public.
 
-1. **Database:** run `migrations/2026-10-18-notifications.sql` in Supabase
+1. **Database:** run `migrations/2026-10-17-notifications.sql` in Supabase
    (SQL Editor → New query → paste → Run).
 2. **Keys:** `.env.local` already has `NEXT_PUBLIC_VAPID_PUBLIC_KEY`,
    `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT` and `CRON_SECRET`. Add
@@ -55,7 +55,7 @@ Vercel's settings, never in the code or anywhere public.
 3. **Vercel:** Project → Settings → Environment Variables → add all five
    (same names and values as `.env.local`), then redeploy (push).
 4. **Schedule:** in Supabase run
-   `migrations/2026-10-18-notifications-schedule.sql`, with your live address
+   `migrations/2026-10-17-notifications-schedule.sql`, with your live address
    and `CRON_SECRET` filled in. It checks every 5 minutes.
 5. **Turn on:** open the live app (on iPhone, from the Home Screen), tap the
    bell (or ☰ → Notifications), Turn on, then "Send a test notification".
