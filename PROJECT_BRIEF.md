@@ -57,10 +57,10 @@ answers "what matters today?" and leaves adding/planning to Tasks.
   "Next: <its next step>" (soonest open task), "· in today's focus" once
   it's starred
 - **Focus** (`lib/focus.js`, up to 3 tasks, `tasks.focus_date` = today):
-  - "Pick today's focus" opens `FocusPicker`: suggestions (main goal's next
-    step, overdue, due today, high priority), then "All other tasks" (every
-    open task, dated or not), with a search; "+ Pick" adds more until there
-    are 3
+  - "Pick today's focus" opens `FocusPicker`: one scrolling list of every
+    open task, dated or not, in two groups: "For your main goal" and
+    "Everything else", most urgent first in each, with a search on top;
+    "+ Pick" adds more until there are 3
   - Carry-over: unfinished tasks from the last focus day (within a week)
     show "Not finished from yesterday's focus: …" with Keep for today /
     Let go. Let go is remembered on the account (`user_metadata.focus_let_go`)

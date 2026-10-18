@@ -421,7 +421,7 @@ export default function TodayPage() {
         onClose={() => setFocusPickerOpen(false)}
         tasks={tasks}
         today={today}
-        nextStepId={nextStep?.id}
+        mainGoal={mainGoal}
         pausedGoalIds={pausedGoalIds}
         focusCount={openFocusCount}
         onPick={(t) => setFocus(t, true)}

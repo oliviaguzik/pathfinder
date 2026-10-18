@@ -6,19 +6,19 @@ import Icon from "./Icon";
 import { FOCUS_LIMIT, focusCandidates } from "../../lib/focus";
 import { friendlyDate } from "../../lib/dates";
 
-// "Pick today's focus": suggestions first (main goal's next step, overdue, due
-// today, high priority), then every other open task, dated or not, with a
-// search to narrow it all. Tapping a row stars it straight away.
-export default function FocusPicker({ open, onClose, tasks, today, nextStepId, pausedGoalIds, focusCount, onPick }) {
+// "Pick today's focus": one scrolling list of every open task, the main goal's
+// first, then everything else (most urgent first in each), with a search to
+// narrow it. Tapping a row stars it straight away.
+export default function FocusPicker({ open, onClose, tasks, today, mainGoal, pausedGoalIds, focusCount, onPick }) {
   const [query, setQuery] = useState("");
-  const { sections, rest } = focusCandidates(tasks, { today, nextStepId, pausedGoalIds });
+  const { forGoal, rest } = focusCandidates(tasks, { today, mainGoalId: mainGoal?.id, pausedGoalIds });
   const full = focusCount >= FOCUS_LIMIT;
   const q = query.trim().toLowerCase();
-  // Suggestions first, then every other open task; the search narrows it all.
-  const all = [...sections, ...(rest.length ? [{ title: sections.length ? "All other tasks" : "Your tasks", tasks: rest }] : [])];
-  const shown = q
-    ? [{ title: "Matching tasks", tasks: all.flatMap((s) => s.tasks).filter((t) => t.name.toLowerCase().includes(q)) }]
-    : all;
+  const matches = (t) => !q || t.name.toLowerCase().includes(q);
+  const groups = [
+    { title: mainGoal ? `For your main goal · ${mainGoal.name}` : "", tasks: forGoal.filter(matches) },
+    { title: forGoal.length ? "Everything else" : "", tasks: rest.filter(matches) },
+  ].filter((g) => g.tasks.length);
 
   function close() {
     setQuery("");
@@ -48,13 +48,17 @@ export default function FocusPicker({ open, onClose, tasks, today, nextStepId, p
         value={query}
         onChange={(e) => setQuery(e.target.value)}
       />
-      {shown.map((s) => (
-        <section key={s.title} className="focus-pick-section">
-          <h3 className="focus-pick-title">{s.title}</h3>
-          {s.tasks.length ? s.tasks.map(row) : <p className="focus-pick-empty">No tasks match.</p>}
-        </section>
-      ))}
-      {!q && !all.length && <p className="focus-pick-empty">No open tasks to pick from. Add one first.</p>}
+      <div className="focus-pick-list">
+        {groups.map((g) => (
+          <section key={g.title || "all"} className="focus-pick-section">
+            {g.title && <h3 className="focus-pick-title">{g.title}</h3>}
+            {g.tasks.map(row)}
+          </section>
+        ))}
+        {!groups.length && (
+          <p className="focus-pick-empty">{q ? "No tasks match." : "No open tasks to pick from. Add one first."}</p>
+        )}
+      </div>
       <div className="form-actions">
         <button type="button" className="primary" onClick={close}>
           Done
