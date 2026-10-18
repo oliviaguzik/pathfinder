@@ -11,17 +11,18 @@ import SwipeRow from "./components/SwipeRow";
 import TaskEditModal from "./components/TaskEditModal";
 import PageTour from "./components/PageTour";
 import AddAnything from "./components/AddAnything";
+import FocusPicker from "./components/FocusPicker";
 import { eventTimeLabel, occurrencesBetween, sortEvents } from "../lib/events";
 import { deleteTaskAndSync, restoreTask, toggleTaskDone, undoTaskDone } from "../lib/taskActions";
 import { notifyUndo } from "../lib/notify";
 import { openOnKey, openOnRowClick } from "../lib/rowClick";
 import { removeEventWithUndo } from "../lib/eventActions";
-import { todayLocalISODate } from "../lib/dates";
+import { friendlyDate, todayLocalISODate } from "../lib/dates";
+import { FOCUS_LIMIT, carryOverFocus } from "../lib/focus";
 import { useAuth } from "../lib/AuthProvider";
 import { nextPosition } from "../lib/reorder";
 import Link from "next/link";
 
-const FOCUS_LIMIT = 3;
 const PRIORITY_RANK = { High: 0, Medium: 1, Low: 2 };
 
 function greeting(now) {
@@ -48,6 +49,13 @@ export default function TodayPage() {
   // The event dialog: { event } to edit one.
   const [eventDialog, setEventDialog] = useState(null);
   const [editingTask, setEditingTask] = useState(null);
+  const [focusPickerOpen, setFocusPickerOpen] = useState(false);
+  // The last focus day whose unfinished tasks were "let go" (kept on the
+  // account, so the question isn't asked again on another device).
+  const [letGoThrough, setLetGoThrough] = useState("");
+  useEffect(() => {
+    setLetGoThrough(user?.user_metadata?.focus_let_go || "");
+  }, [user]);
   // Just-ticked tasks stay put (shown as done) for a moment before leaving the list.
   const [lingering, setLingering] = useState(() => new Set());
   // Each change bumps this, so a refresh that started before the change can't
@@ -107,8 +115,9 @@ export default function TodayPage() {
       return (a.created_at || "").localeCompare(b.created_at || "");
     })[0];
 
-  // The next step already shows in the Today card, so the goal line doesn't repeat it.
-  const nextStepShown = !!nextStep && (focusIds.has(nextStep.id) || todayList.some((t) => t.id === nextStep.id));
+  // Unfinished focus tasks from the last focus day: keep them for today?
+  const carry = carryOverFocus(tasks, today, letGoThrough);
+  const hasOpenTasks = tasks.some((t) => t.status !== "Done");
 
   function goalName(id) {
     return goals.find((g) => g.id === id)?.name || "";
@@ -190,6 +199,22 @@ export default function TodayPage() {
     patchTask(task.id, { focus_date: on ? today : null });
     await supabase.from("tasks").update({ focus_date: on ? today : null }).eq("id", task.id);
     loadData();
+  }
+
+  // Yesterday's unfinished focus: Keep (as many as there's room for) or Let go.
+  async function keepCarryOver() {
+    const keep = carry.tasks.slice(0, Math.max(0, FOCUS_LIMIT - openFocusCount));
+    if (!keep.length) return letGoCarryOver();
+    dataVersion.current++;
+    const ids = new Set(keep.map((t) => t.id));
+    setTasks((list) => list.map((t) => (ids.has(t.id) ? { ...t, focus_date: today } : t)));
+    await supabase.from("tasks").update({ focus_date: today }).in("id", [...ids]);
+    loadData();
+  }
+
+  async function letGoCarryOver() {
+    setLetGoThrough(carry.day);
+    await supabase.auth.updateUser({ data: { focus_let_go: carry.day } });
   }
 
   async function moveTo(task, dateStr) {
@@ -301,29 +326,16 @@ export default function TodayPage() {
                 <Link className="main-goal-line-name" href="/goals">{mainGoal.name}</Link>
                 <span className="main-goal-line-pct">{mainPct}%</span>
                 <span className="main-goal-line-next">
-                  {!nextStep
-                    ? mainTasks.length > 0
-                      ? "All tasks done. Finish it on the Goals page."
-                      : "No next step yet. Add one on the Goals page."
-                    : nextStepShown
-                      ? "Next step is on today's list"
-                      : (
-                        <>
-                          Next: <strong>{nextStep.name}</strong>
-                        </>
-                      )}
+                  {!nextStep ? (
+                    mainTasks.length > 0 ? "All tasks done. Finish it on the Goals page." : "No next step yet. Add one on the Goals page."
+                  ) : (
+                    <>
+                      Next: <strong>{nextStep.name}</strong>
+                      {focusIds.has(nextStep.id) && " · in today's focus"}
+                    </>
+                  )}
                 </span>
               </div>
-              {nextStep && !focusIds.has(nextStep.id) && (
-                <button
-                  className="ghost small-btn main-goal-line-action"
-                  onClick={() => setFocus(nextStep, true)}
-                  disabled={openFocusCount >= FOCUS_LIMIT}
-                  title={openFocusCount >= FOCUS_LIMIT ? `You already have ${FOCUS_LIMIT} focus tasks` : undefined}
-                >
-                  <Icon name="star" size={14} /> Add to focus
-                </button>
-              )}
             </section>
           )}
 
@@ -333,7 +345,7 @@ export default function TodayPage() {
               <h2>Today</h2>
             </div>
 
-            {(focus.length > 0 || todayList.length > 0) && (
+            {(focus.length > 0 || hasOpenTasks) && (
               <div className="today-focus-block">
                 <h3 className="today-block-title">
                   <Icon name="starFilled" size={14} />
@@ -343,9 +355,35 @@ export default function TodayPage() {
                       {focus.length - openFocusCount} / {focus.length}
                     </span>
                   )}
+                  {focus.length > 0 && openFocusCount < FOCUS_LIMIT && (
+                    <button type="button" className="ghost small-btn focus-pick-more" onClick={() => setFocusPickerOpen(true)}>
+                      <Icon name="plus" size={13} /> Pick
+                    </button>
+                  )}
                 </h3>
+                {carry.tasks.length > 0 && (
+                  <div className="focus-carry">
+                    <p>
+                      Not finished from {friendlyDate(carry.day) === "Yesterday" ? "yesterday's focus" : `your focus on ${friendlyDate(carry.day)}`}:{" "}
+                      <strong>{carry.tasks.map((t) => t.name).join(", ")}</strong>
+                    </p>
+                    <div className="focus-carry-actions">
+                      <button type="button" className="primary small-btn" onClick={keepCarryOver}>
+                        Keep for today
+                      </button>
+                      <button type="button" className="ghost small-btn" onClick={letGoCarryOver}>
+                        Let go
+                      </button>
+                    </div>
+                  </div>
+                )}
                 {focus.length === 0 ? (
-                  <p className="today-hint">Star up to {FOCUS_LIMIT} tasks below that would make today a win.</p>
+                  <div className="focus-empty">
+                    <p className="today-hint">Pick up to {FOCUS_LIMIT} tasks that would make today a win.</p>
+                    <button type="button" className="focus-pick-btn" onClick={() => setFocusPickerOpen(true)}>
+                      <Icon name="star" size={14} /> Pick today's focus
+                    </button>
+                  </div>
                 ) : (
                   focus.map(renderRow)
                 )}
@@ -378,6 +416,16 @@ export default function TodayPage() {
         </>
       )}
       <PageTour id="today" ready={!loading} />
+      <FocusPicker
+        open={focusPickerOpen}
+        onClose={() => setFocusPickerOpen(false)}
+        tasks={tasks}
+        today={today}
+        nextStepId={nextStep?.id}
+        pausedGoalIds={pausedGoalIds}
+        focusCount={openFocusCount}
+        onPick={(t) => setFocus(t, true)}
+      />
       <TaskEditModal
         task={editingTask}
         tasks={tasks}

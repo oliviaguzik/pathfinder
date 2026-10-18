@@ -36,7 +36,7 @@ export async function POST(request) {
     const since = new Date(now.getTime() - 3 * 86400000).toISOString();
     const [{ data: events }, { data: tasks }, { data: log }] = await Promise.all([
       admin.from("events").select("*").eq("user_id", settings.user_id),
-      admin.from("tasks").select("id, name, status, due_date, remind_at").eq("user_id", settings.user_id).neq("status", "Done"),
+      admin.from("tasks").select("id, name, status, due_date, remind_at, focus_date").eq("user_id", settings.user_id).neq("status", "Done"),
       admin.from("sent_notifications").select("kind, ref").eq("user_id", settings.user_id).gte("sent_at", since),
     ]);
     const due = dueNotifications({

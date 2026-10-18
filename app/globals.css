@@ -1937,7 +1937,6 @@ button.primary.event-primary:active { transform: translateY(0); box-shadow: none
 .main-goal-line-pct { font-size: 12.5px; font-weight: 600; color: var(--gold); }
 .main-goal-line-next { font-size: 13px; color: var(--muted); overflow-wrap: anywhere; }
 .main-goal-line-next strong { color: var(--text); font-weight: 550; }
-.main-goal-line-action { display: inline-flex; align-items: center; gap: 5px; flex-shrink: 0; }
 
 .today-card { padding: 16px 18px; }
 .today-card-head { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
@@ -2668,3 +2667,63 @@ button.avatar-trigger { padding: 2px; border-radius: 50%; }
   /* Goals: add with the same round + as Plan; always cards on phones. */
   .add-goal-btn, .goals-view-toggle { display: none !important; }
 }
+
+/* ---------- Today's focus: picking, carry-over ---------- */
+.focus-empty { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; padding: 2px 0 6px; }
+.focus-empty .today-hint { margin: 0; }
+button.focus-pick-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border-color: color-mix(in srgb, var(--accent) 35%, transparent);
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-weight: 600;
+}
+button.focus-pick-more { margin-left: auto; display: inline-flex; align-items: center; gap: 4px; }
+.focus-carry {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 12px;
+  flex-wrap: wrap;
+  margin: 4px 0 10px;
+  padding: 10px 12px;
+  border-radius: var(--radius-sm);
+  background: var(--surface-sunken);
+  font-size: 13px;
+}
+.focus-carry p { margin: 0; color: var(--muted); line-height: 1.45; }
+.focus-carry strong { color: var(--text); font-weight: 600; }
+.focus-carry-actions { display: flex; gap: 6px; flex-shrink: 0; }
+.focus-carry-actions button.primary.small-btn { color: var(--text-inverse); }
+
+/* The focus picker */
+.focus-pick-intro { margin: 0 0 12px; font-size: 13.5px; color: var(--muted); line-height: 1.5; }
+.focus-pick-search { width: 100%; margin-bottom: 6px; }
+.focus-pick-section { margin-top: 12px; }
+.focus-pick-title { margin: 0 0 4px; font-size: 12px; font-weight: 650; color: var(--muted); letter-spacing: 0.01em; }
+button.focus-pick-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 8px;
+  margin: 0 -8px;
+  width: calc(100% + 16px);
+  border: none;
+  background: transparent;
+  text-align: left;
+  font-weight: 400;
+  color: var(--text);
+}
+button.focus-pick-row svg { color: var(--muted-soft); flex-shrink: 0; }
+button.focus-pick-row:hover:not(:disabled) { background: var(--surface-sunken); }
+button.focus-pick-row:hover:not(:disabled) svg { color: var(--accent); }
+.focus-pick-name { flex: 1; min-width: 0; }
+.focus-pick-due { font-size: 12.5px; color: var(--muted); flex-shrink: 0; }
+.focus-pick-due.overdue { color: var(--danger); }
+.focus-pick-empty { margin: 6px 0; font-size: 13px; color: var(--muted); }
+
+/* "Focus today" in the task dialog */
+button.focus-toggle { display: inline-flex; align-items: center; gap: 6px; margin-bottom: 14px; }
+button.focus-toggle.on { border-color: color-mix(in srgb, var(--accent) 35%, transparent); background: var(--accent-soft); color: var(--accent); font-weight: 600; }

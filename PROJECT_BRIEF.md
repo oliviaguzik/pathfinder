@@ -53,9 +53,20 @@ nosniff, strict referrer, no camera / microphone / location).
 **Today page** (`app/page.js`, the home screen). Deliberately minimal: it
 answers "what matters today?" and leaves adding/planning to Tasks.
 - Greeting, date, one summary line (due today / overdue / events)
-- A slim gold main-goal line (only the goal marked main): name, % done,
-  next step (soonest open task) and "Add to focus". When that step is
-  already on the Today card it says so instead of repeating it
+- A slim gold main-goal line (only the goal marked main): name, % done and
+  "Next: <its next step>" (soonest open task), "· in today's focus" once
+  it's starred
+- **Focus** (`lib/focus.js`, up to 3 tasks, `tasks.focus_date` = today):
+  - "Pick today's focus" opens `FocusPicker`: suggestions (main goal's next
+    step, overdue, due today, high priority) and a search over every open
+    task, dated or not; "+ Pick" adds more until there are 3
+  - Carry-over: unfinished tasks from the last focus day (within a week)
+    show "Not finished from yesterday's focus: …" with Keep for today /
+    Let go. Let go is remembered on the account (`user_metadata.focus_let_go`)
+  - "Focus today" in the task dialog (`TaskEditModal`) stars a task from
+    any page
+  - The morning notification leads with "Focus: …", or "Pick your focus
+    for today"
 - The same Add box as Plan (`AddAnything`: the Add bar on wide screens, the
   round + on phones); a task added here with no date is due today
 - One "Today" card: Focus first (star up to 3

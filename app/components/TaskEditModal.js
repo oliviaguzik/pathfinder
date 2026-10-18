@@ -2,6 +2,10 @@
 
 import { useEffect, useState } from "react";
 import Modal from "./Modal";
+import Icon from "./Icon";
+import { supabase } from "../../lib/supabaseClient";
+import { todayLocalISODate } from "../../lib/dates";
+import { FOCUS_LIMIT } from "../../lib/focus";
 import TaskFields from "./TaskFields";
 import { notifyUndo, notifyWarning } from "../../lib/notify";
 import { EMPTY_TASK_FORM, taskFormFromTask } from "../../lib/taskForm";
@@ -9,14 +13,33 @@ import { deleteTaskAndSync, restoreTask, saveTaskEdit } from "../../lib/taskActi
 
 // Edit or delete one task in a dialog. `tasks` and `goals` are the lists as
 // loaded (for goal status syncing and the goal picker). `onSaved` runs after
-// any save or delete.
+// any save or delete. "Focus today" stars an open task for today's focus
+// straight away (from any page), up to FOCUS_LIMIT.
 export default function TaskEditModal({ task, tasks, goals, onClose, onSaved }) {
   const [form, setForm] = useState(EMPTY_TASK_FORM);
+  const [inFocus, setInFocus] = useState(false);
+  const today = todayLocalISODate();
 
   useEffect(() => {
     if (!task) return;
     setForm(taskFormFromTask(task));
+    setInFocus(task.focus_date === today);
   }, [task]);
+
+  async function toggleFocus() {
+    const on = !inFocus;
+    if (on) {
+      const { count } = await supabase
+        .from("tasks")
+        .select("id", { count: "exact", head: true })
+        .eq("focus_date", today)
+        .neq("status", "Done");
+      if (count >= FOCUS_LIMIT) return notifyWarning(`Today's focus already has ${FOCUS_LIMIT} tasks. Finish or unstar one first.`);
+    }
+    setInFocus(on);
+    await supabase.from("tasks").update({ focus_date: on ? today : null }).eq("id", task.id);
+    onSaved();
+  }
 
   // Finished and paused goals aren't offered, except the task's current one.
   const openGoals = goals.filter((g) => (!g.completed_at && !g.paused_at) || g.id === task?.goal_id);
@@ -44,6 +67,12 @@ export default function TaskEditModal({ task, tasks, goals, onClose, onSaved }) 
 
   return (
     <Modal open={!!task} onClose={onClose} title="Edit task">
+      {task && task.status !== "Done" && (
+        <button type="button" className={`focus-toggle ${inFocus ? "on" : ""}`} aria-pressed={inFocus} onClick={toggleFocus}>
+          <Icon name={inFocus ? "starFilled" : "star"} size={14} />
+          {inFocus ? "In today's focus" : "Focus today"}
+        </button>
+      )}
       <form className="form-grid" style={{ boxShadow: "none", border: "none", padding: 0, margin: 0 }} onSubmit={save}>
         <TaskFields
           form={form}
