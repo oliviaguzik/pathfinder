@@ -52,7 +52,7 @@ Vercel's settings, never in the code or anywhere public.
    Keys → the secret `service_role` key. It can read everyone's data, so it
    must never be shared or given a `NEXT_PUBLIC_` name. Set `VAPID_SUBJECT`
    to `mailto:` plus your email.
-3. **Vercel:** Project → Settings → Environment Variables → add all five
+3. **Vercel:** Project → Environment Variables (left sidebar) → add all five
    (same names and values as `.env.local`), then redeploy (push).
 4. **Schedule:** in Supabase run
    `migrations/2026-10-17-notifications-schedule.sql`, with your live address
