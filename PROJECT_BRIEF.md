@@ -306,12 +306,11 @@ Clean, modern, calm — closer to Things/Todoist than a form-based admin tool.
   add for that date; busy month cells show "+N more"
 - Phones (600px and below):
   - A bottom tab bar (Today · Plan · Goals · Review, icons + labels)
-  - No top bar: every page starts with its big title, and your initial in a
-    circle level with it (like the App Store); the circle's menu has your
-    email, Notifications, Tour of this page, light / dark, Sign out. Once you
-    scroll, a blurred bar with the app icon and page name fades in (NavBar
-    `.scrolled`). The app icon also sits by Today's date. The one-line page
-    introductions are hidden on phones
+  - A PathFinder bar on top (icon and name on the left, your initial in a
+    circle on the right; it blurs once the page scrolls under it). The
+    circle's menu has your email, Notifications, Tour of this page,
+    light / dark, Sign out. Each page's big title sits below; the one-line
+    page introductions are hidden on phones
   - Plan's view switch reads "List | Calendar" in words; Goals adds with the
     same round + as Plan, and always shows cards
   - Review: the first two numbers side by side, the best day below.

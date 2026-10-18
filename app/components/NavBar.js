@@ -26,10 +26,10 @@ function toggleTheme() {
   applyTheme(document.documentElement.getAttribute("data-theme") === "dark" ? "light" : "dark");
 }
 
-// Wide screens: one top bar with the pages, theme and Sign out. Phones: no
-// bar; your initial in a circle sits level with the page's big title (its
-// menu has notifications, the tour, theme and Sign out), like the App Store;
-// once you scroll, a slim bar with the app icon and page name fades in. The pages
+// Wide screens: one top bar with the pages, theme and Sign out. Phones: a
+// PathFinder bar (icon and name) with your initial in a circle on the right
+// (its menu has notifications, the tour, theme and Sign out); it blurs once
+// the page scrolls under it. The pages
 // move to a tab bar along the bottom, one thumb-tap away.
 export default function NavBar() {
   const pathname = usePathname();
@@ -38,7 +38,6 @@ export default function NavBar() {
   const [scrolled, setScrolled] = useState(false);
   const name = user?.user_metadata?.full_name || user?.user_metadata?.name || user?.email || "";
   const initial = name.trim().charAt(0).toUpperCase() || "•";
-  const pageName = NAV_LINKS.find(({ href }) => isActive(pathname, href))?.label || "PathFinder";
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 44);
@@ -49,11 +48,7 @@ export default function NavBar() {
 
   return (
     <>
-      <nav className={`topnav ${scrolled ? "scrolled" : ""} ${pathname === "/" ? "on-today" : ""}`}>
-        <span className="topnav-title" aria-hidden="true">
-          <BrandMark size={20} />
-          {pageName}
-        </span>
+      <nav className={`topnav ${scrolled ? "scrolled" : ""}`}>
         <Link href="/" className="brand">
           <BrandMark />
           <span className="brand-name">PathFinder</span>

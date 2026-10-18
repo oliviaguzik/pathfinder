@@ -2458,10 +2458,10 @@ button.danger-text:hover { color: var(--danger); background: color-mix(in srgb, 
 .notify-test { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding-top: 4px; border-top: 1px solid var(--border-soft); }
 .notify-problem { margin: 10px 0 0; font-size: 13px; line-height: 1.5; color: var(--danger); }
 
-/* ---------- Phones: a big page title instead of a top bar ----------
-   The ☰ sits beside the title; once you scroll, a slim bar with the page
-   name fades in (NavBar adds .scrolled). */
-.topnav-title { display: none; }
+/* ---------- Phones: the PathFinder bar, and big page titles ----------
+   The bar has the icon and name on the left and your initial on the right;
+   it blurs and gets a hairline once the page scrolls under it (NavBar adds
+   .scrolled). Each page's big title sits below it. */
 @media (max-width: 600px) {
   .topnav {
     position: fixed;
@@ -2469,42 +2469,25 @@ button.danger-text:hover { color: var(--danger); background: color-mix(in srgb, 
     left: 0;
     right: 0;
     z-index: 30;
-    justify-content: flex-end;
-    height: calc(54px + env(safe-area-inset-top, 0px));
-    padding: env(safe-area-inset-top, 0px) 8px 0 16px;
+    justify-content: space-between;
+    height: calc(56px + env(safe-area-inset-top, 0px));
+    padding: env(safe-area-inset-top, 0px) 10px 0 16px;
     border-bottom: 1px solid transparent;
-    background: transparent;
+    background: var(--bg);
     backdrop-filter: none;
     -webkit-backdrop-filter: none;
     transition: background 0.2s, border-color 0.2s;
   }
-  .topnav { justify-content: space-between; }
-  .topnav .brand-name { display: none; }
-  .topnav-title {
-    display: block;
-    position: absolute;
-    left: 60px;
-    right: 60px;
-    bottom: 0;
-    line-height: 54px;
-    text-align: center;
-    font-size: 16px;
-    font-weight: 650;
-    letter-spacing: -0.01em;
-    opacity: 0;
-    transition: opacity 0.2s;
-    pointer-events: none;
-  }
+  .topnav > .brand { gap: 9px; font-size: 17px; letter-spacing: -0.01em; }
   .topnav.scrolled {
     background: color-mix(in srgb, var(--bg) 82%, transparent);
     border-bottom-color: var(--border-soft);
     backdrop-filter: saturate(1.4) blur(14px);
     -webkit-backdrop-filter: saturate(1.4) blur(14px);
   }
-  .topnav.scrolled .topnav-title { opacity: 1; }
   .topnav-phone { position: relative; z-index: 1; margin-right: 0; }
 
-  .container { padding-top: calc(52px + env(safe-area-inset-top, 0px)); }
+  .container { padding-top: calc(76px + env(safe-area-inset-top, 0px)); }
   h1 { font-size: 32px; line-height: 1.2; letter-spacing: -0.03em; margin-bottom: 16px; }
   h1 + .page-sub:not(.page-sub-intro) { margin-top: -12px; }
   /* The one-line page introductions are for wide screens; phones get straight to it. */
@@ -2670,10 +2653,7 @@ button.danger-text:hover { color: var(--danger); background: color-mix(in srgb, 
   .card { overflow-x: clip; }
 }
 
-/* ---------- One header on every page (phones) ----------
-   Big title on the left, your initial in a circle on the right, level with it
-   (on Today, level with the greeting under the date). The app icon sits by
-   Today's date and in the slim bar that appears on scroll. */
+/* ---------- Your initial in a circle (the phone menu), and phone switches ---------- */
 .avatar {
   display: inline-flex;
   align-items: center;
@@ -2698,22 +2678,9 @@ button.avatar-trigger { padding: 2px; border-radius: 50%; }
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.today-date .brand-mark { display: none; }
 .view-switch-label { display: none; }
 
 @media (max-width: 600px) {
-  .topnav { height: calc(70px + env(safe-area-inset-top, 0px)); }
-  .topnav { justify-content: flex-end; }
-  .topnav > .brand { display: none; }
-  .topnav-phone { margin-right: 8px; }
-  .topnav.on-today:not(.scrolled) .topnav-phone { transform: translateY(24px); }
-  .topnav.scrolled { height: calc(54px + env(safe-area-inset-top, 0px)); }
-  .topnav-title { display: flex; align-items: center; justify-content: center; gap: 8px; line-height: 54px; }
-  .container { padding-top: calc(16px + env(safe-area-inset-top, 0px)); }
-  h1 { padding-right: 52px; }
-  .today-date { display: flex; align-items: center; gap: 8px; }
-  .today-date .brand-mark { display: inline-flex; }
-
   /* Plan: "List | Calendar" in words, as one switch (no lookalike ☰ icon). */
   .view-switch { gap: 0 !important; padding: 2px; border-radius: 10px; background: var(--surface-sunken); border: 1px solid var(--border-soft); }
   .view-switch .view-toggle-btn { width: auto; height: 32px; padding: 0 12px; border-radius: 8px; font-size: 13px; font-weight: 600; color: var(--muted); }
