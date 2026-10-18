@@ -218,7 +218,8 @@ the README for which file does what). Title "Plan", subtitle "Your tasks and eve
   target isn't on screen is skipped; `phoneBody` for phone wording); the engine
   is `PageTour`. "Seen" is kept on the account (Supabase user metadata
   `tours_seen`, no table needed) and in localStorage (`lib/tourState.js`).
-  "Show the tour again": ? button in the top bar (wide) or the ☰ menu (phones)
+  "Tour of this page": ? button in the top bar (wide) or the ☰ menu (phones)
+  replays only the current page's tour; the other pages stay seen
 
 **Installable app (PWA)**
 - On a phone: open the site, Share → Add to Home Screen (Safari, or Chrome on

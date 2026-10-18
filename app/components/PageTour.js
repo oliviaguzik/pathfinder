@@ -18,8 +18,8 @@ function visibleTarget(selector) {
 
 // A page's first-visit tour (steps in tours.js): the page dims except the part
 // being explained, with a small bubble and Back / Next / Skip. It starts once
-// the page has loaded (`ready`), runs once per account, and runs again after
-// "Show the tour again". Escape skips; arrow keys step.
+// the page has loaded (`ready`), runs once per account, and runs again from
+// "Tour of this page" (nav ? / phone menu), for this page only. Escape skips; arrow keys step.
 export default function PageTour({ id, ready = true }) {
   const { user } = useAuth();
   const isPhone = useIsPhone();
