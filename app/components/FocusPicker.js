@@ -7,16 +7,18 @@ import { FOCUS_LIMIT, focusCandidates } from "../../lib/focus";
 import { friendlyDate } from "../../lib/dates";
 
 // "Pick today's focus": suggestions first (main goal's next step, overdue, due
-// today, high priority), and a search over every other open task, so anything
-// can be picked, dated or not. Tapping a row stars it straight away.
+// today, high priority), then every other open task, dated or not, with a
+// search to narrow it all. Tapping a row stars it straight away.
 export default function FocusPicker({ open, onClose, tasks, today, nextStepId, pausedGoalIds, focusCount, onPick }) {
   const [query, setQuery] = useState("");
   const { sections, rest } = focusCandidates(tasks, { today, nextStepId, pausedGoalIds });
   const full = focusCount >= FOCUS_LIMIT;
   const q = query.trim().toLowerCase();
+  // Suggestions first, then every other open task; the search narrows it all.
+  const all = [...sections, ...(rest.length ? [{ title: sections.length ? "All other tasks" : "Your tasks", tasks: rest }] : [])];
   const shown = q
-    ? [{ title: "Matching tasks", tasks: [...sections.flatMap((s) => s.tasks), ...rest].filter((t) => t.name.toLowerCase().includes(q)) }]
-    : sections;
+    ? [{ title: "Matching tasks", tasks: all.flatMap((s) => s.tasks).filter((t) => t.name.toLowerCase().includes(q)) }]
+    : all;
 
   function close() {
     setQuery("");
@@ -41,8 +43,8 @@ export default function FocusPicker({ open, onClose, tasks, today, nextStepId, p
       <input
         type="text"
         className="focus-pick-search"
-        placeholder="Search all your tasks"
-        aria-label="Search all your tasks"
+        placeholder="Search your tasks"
+        aria-label="Search your tasks"
         value={query}
         onChange={(e) => setQuery(e.target.value)}
       />
@@ -52,9 +54,7 @@ export default function FocusPicker({ open, onClose, tasks, today, nextStepId, p
           {s.tasks.length ? s.tasks.map(row) : <p className="focus-pick-empty">No tasks match.</p>}
         </section>
       ))}
-      {!q && !sections.length && (
-        <p className="focus-pick-empty">Nothing pressing today. Search above to pick any task.</p>
-      )}
+      {!q && !all.length && <p className="focus-pick-empty">No open tasks to pick from. Add one first.</p>}
       <div className="form-actions">
         <button type="button" className="primary" onClick={close}>
           Done
