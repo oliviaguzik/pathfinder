@@ -38,6 +38,19 @@ Import the GitHub repo in Vercel and add `NEXT_PUBLIC_SUPABASE_URL` and
 `NEXT_PUBLIC_SUPABASE_ANON_KEY` as environment variables. Every push to
 `main` redeploys.
 
+## Email sign-in setup
+
+Signing in with an emailed code needs two one-time settings in Supabase:
+
+1. **Authentication → Emails → Templates:** in both **Magic Link** and
+   **Confirm signup**, make the email show the code: replace the body with
+   `<p>Your PathFinder sign-in code is <strong>{{ .Token }}</strong></p>`.
+2. **Authentication → Sign In / Providers → Email:** set **Email OTP
+   Expiration** to `600` (codes last 10 minutes).
+
+Supabase's built-in email sender allows only a few emails an hour; add your
+own sender (Authentication → Emails → SMTP Settings) before inviting others.
+
 ## Notifications setup
 
 Notifications (event reminders, morning summary, overdue nudge, task
@@ -56,7 +69,12 @@ Vercel's settings, never in the code or anywhere public.
    (same names and values as `.env.local`), then redeploy (push).
 4. **Schedule:** in Supabase run
    `migrations/2026-10-17-notifications-schedule.sql`, with your live address
-   and `CRON_SECRET` filled in. It checks every 5 minutes; then run `migrations/2026-10-17-notifications-every-minute.sql` to check every minute.
+   and `CRON_SECRET` filled in. It checks every 5 minutes; then run
+   `migrations/2026-10-17-notifications-every-minute.sql` to check every
+   minute. To see whether the checks reach the app, run
+   `select status_code, content from net._http_response order by created desc limit 5;`
+   (200 = working; a 404 "requested path is invalid" means the address is
+   wrong).
 5. **Turn on:** open the live app (on iPhone, from the Home Screen), tap the
    bell (or ☰ → Notifications), Turn on, then "Send a test notification".
 

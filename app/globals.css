@@ -100,7 +100,8 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  height: 100vh;
+  min-height: 100vh;
+  min-height: 100dvh;
   padding: 24px;
 }
 .login-card {
@@ -114,6 +115,7 @@ body {
   text-align: center;
 }
 .google-signin-btn {
+  height: 40px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -122,6 +124,53 @@ body {
   padding: 10px 16px;
   font-size: 14px;
   font-weight: 500;
+}
+.login-divider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 20px 0;
+  color: var(--muted);
+  font-size: 13px;
+}
+.login-divider::before,
+.login-divider::after {
+  content: "";
+  flex: 1;
+  border-top: 1px solid var(--border);
+}
+.login-form {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.login-card .login-form input {
+  width: 100%;
+  height: 40px;
+  font-size: 16px; /* 16px stops iPhone zooming in on the field */
+}
+.login-card .login-form button {
+  width: 100%;
+  height: 40px;
+  font-size: 14px;
+  font-weight: 500;
+}
+.login-code {
+  text-align: center;
+  letter-spacing: 0.3em;
+  font-variant-numeric: tabular-nums;
+}
+.login-links {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  margin-top: 12px;
+}
+.login-message {
+  margin: 14px 0 0;
+  color: var(--danger);
+  font-size: 13px;
 }
 
 .topnav {
@@ -565,8 +614,8 @@ h1 { font-size: 28px; font-weight: 750; margin: 0 0 4px; letter-spacing: -0.025e
 .select-option.active { background: var(--surface-sunken); }
 .select-option.selected { font-weight: 600; }
 
-select, input[type="text"], input[type="date"], input[type="number"], input[type="time"], input[type="datetime-local"] { height: var(--control-height); }
-select, input[type="text"], input[type="date"], input[type="number"], input[type="time"], input[type="datetime-local"], textarea {
+select, input[type="text"], input[type="date"], input[type="number"], input[type="time"], input[type="datetime-local"], input[type="email"] { height: var(--control-height); }
+select, input[type="text"], input[type="date"], input[type="number"], input[type="time"], input[type="datetime-local"], input[type="email"], textarea {
   padding: 8px 12px;
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);

@@ -96,7 +96,10 @@ create policy "users manage their own events" on events
 create table if not exists push_subscriptions (
   id uuid primary key default uuid_generate_v4(),
   user_id uuid not null default auth.uid() references auth.users(id) on delete cascade,
-  endpoint text not null unique,
+  -- Must be a real notification service (Apple, Google, Mozilla, Microsoft).
+  endpoint text not null unique check (
+    endpoint ~ '^https://([a-z0-9-]+\.)*(push\.apple\.com|fcm\.googleapis\.com|push\.services\.mozilla\.com|notify\.windows\.com)/'
+  ),
   p256dh text not null,
   auth text not null,
   created_at timestamp with time zone default now()

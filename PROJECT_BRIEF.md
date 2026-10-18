@@ -9,8 +9,10 @@ Next.js app with a Supabase (Postgres) backend, deployed on Vercel.
 - Supabase for the database (Postgres) and auth — connected via
   `@supabase/supabase-js` in `lib/supabaseClient.js`, using env vars
   `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY`
-- Google sign-in via Supabase Auth (`lib/AuthProvider.js`), gating the whole
-  app behind `app/components/AuthGate.js` / `LoginScreen.js`
+- Sign-in via Supabase Auth (`lib/AuthProvider.js`): Google, or a one-time
+  code sent by email (no passwords; the same email lands in the same
+  account either way). The whole app is gated behind
+  `app/components/AuthGate.js` / `LoginScreen.js`
 - Plain CSS (`app/globals.css`) — no Tailwind, no component library — with
   light/dark theme support (`ThemeToggle.js`, applied via `data-theme`
   attribute set before first paint to avoid a flash)
@@ -32,9 +34,19 @@ task), created_at
 Key relationship: a task can optionally link to one goal via `goal_id`.
 General Life tasks leave `goal_id` empty; Goal-Related tasks should have one.
 
-Row Level Security is enabled on both tables — every policy restricts reads
+Row Level Security is enabled on every table — every policy restricts reads
 and writes to `auth.uid() = user_id`, and every insert in the app sets
-`user_id` to the signed-in user. Each user's data is fully isolated.
+`user_id` to the signed-in user. Each user's data is fully isolated
+(checked 2026-10-17: without signing in, every table reads empty and writes
+are refused).
+
+Other safety measures: the service-role key is only used in server code
+(`lib/server/`, guarded by `server-only`); the scheduled send route needs
+`CRON_SECRET`; device notification addresses must belong to a real push
+service (Apple / Google / Mozilla / Microsoft), checked in the database and
+in `lib/server/push.js`, so the server can't be pointed at other sites;
+`next.config.js` sends security headers (no framing by other sites,
+nosniff, strict referrer, no camera / microphone / location).
 
 ## What's built so far
 
@@ -244,7 +256,7 @@ the README for which file does what). Title "Plan", subtitle "Your tasks and eve
   the live app
 
 **Shared**
-- Google auth end-to-end (sign in, session persistence, sign out)
+- Sign in with Google or an emailed code, session persistence, sign out
 - Dark/light theme toggle
 - Reusable `Modal`, `Popover`, and custom `Select` components for consistent
   styling (native `<select>` was replaced)
@@ -312,6 +324,12 @@ Clean, modern, calm — closer to Things/Todoist than a form-based admin tool.
 - Normal-case field labels, not small uppercase
 
 ## Not yet built (roadmap)
+- **Upgrade Next.js** (14 → 16): npm audit lists advisories for Next 14; most
+  are for features PathFinder doesn't use (image optimizer, rewrites,
+  middleware, server actions), but staying on a supported version matters.
+- **Own email sender** for sign-in codes (e.g. Resend as custom SMTP in
+  Supabase) before inviting other people: Supabase's built-in sender only
+  allows a few emails an hour.
 - **Context tag UI** (@home/@errand/@computer/@calls) — the `context` column
   exists on `tasks` but there is no picker in the add/edit forms and no
   filter for it. This is the only remaining item from the original roadmap.
