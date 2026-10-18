@@ -3,7 +3,8 @@
 //   connection, a friendly offline screen is shown instead of an error;
 // - the app's versioned code files and icons are kept on the phone so it opens fast.
 // Data (Supabase) and sign-in requests go straight to the network, never stored here.
-const CACHE = "pathfinder-v1";
+// It also shows notifications sent by the server, and opens the app when one is tapped.
+const CACHE = "pathfinder-v2";
 const OFFLINE_URL = "/offline.html";
 
 self.addEventListener("install", (event) => {
@@ -46,4 +47,40 @@ self.addEventListener("fetch", (event) => {
       )
     );
   }
+});
+
+// A notification from the server: { title, body, url, tag }.
+self.addEventListener("push", (event) => {
+  let data = {};
+  try {
+    data = event.data ? event.data.json() : {};
+  } catch {
+    data = { title: "PathFinder", body: event.data ? event.data.text() : "" };
+  }
+  event.waitUntil(
+    self.registration.showNotification(data.title || "PathFinder", {
+      body: data.body || "",
+      icon: "/icons/icon-192.png",
+      badge: "/icons/icon-192.png",
+      tag: data.tag,
+      data: { url: data.url || "/" },
+    })
+  );
+});
+
+// Tapping a notification opens PathFinder at its page (reusing an open window).
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close();
+  const url = new URL(event.notification.data?.url || "/", self.location.origin).href;
+  event.waitUntil(
+    self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((windows) => {
+      for (const win of windows) {
+        if (win.url.startsWith(self.location.origin)) {
+          win.navigate(url);
+          return win.focus();
+        }
+      }
+      return self.clients.openWindow(url);
+    })
+  );
 });

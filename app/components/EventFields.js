@@ -3,6 +3,19 @@
 import Select from "./Select";
 import { RECURRENCE_PRESET_OPTIONS } from "../../lib/recurrence";
 
+// "" = the default from Notification settings; -1 = no reminder.
+const REMINDER_OPTIONS = [
+  { value: "", label: "Default" },
+  { value: "-1", label: "None" },
+  { value: "0", label: "At start" },
+  { value: "5", label: "5 min before" },
+  { value: "10", label: "10 min before" },
+  { value: "15", label: "15 min before" },
+  { value: "30", label: "30 min before" },
+  { value: "60", label: "1 hour before" },
+  { value: "1440", label: "1 day before" },
+];
+
 // The fields shared by every add/edit event form. `form` is shaped like
 // EMPTY_EVENT_FORM (lib/events.js); `onChange` receives the changed keys.
 // Pass `showTitle={false}` when the caller renders the title input itself;
@@ -49,6 +62,15 @@ export default function EventFields({ form, onChange, idPrefix, showTitle = true
           <div className="field">
             <label htmlFor={id("end")}>Ends</label>
             <input id={id("end")} type="time" value={form.endTime} onChange={(e) => onChange({ endTime: e.target.value })} />
+          </div>
+          <div className="field">
+            <label htmlFor={id("reminder")}>Reminder</label>
+            <Select
+              id={id("reminder")}
+              value={form.reminderMinutes ?? ""}
+              onChange={(reminderMinutes) => onChange({ reminderMinutes })}
+              options={REMINDER_OPTIONS}
+            />
           </div>
         </>
       )}

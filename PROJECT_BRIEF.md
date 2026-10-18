@@ -222,6 +222,27 @@ the README for which file does what). Title "Plan", subtitle "Your tasks and eve
   icons are kept for a fast start. Supabase / sign-in requests are never
   stored. Bump `CACHE` in sw.js to clear old stored files
 
+**Notifications** (setup steps in the README)
+- Bell in the top bar (☰ → Notifications on phones) opens the settings:
+  turn on for this device (iPhone: only from the Home Screen app), Before
+  events (default 15 min; Off / At start / 5–60 min), Morning summary (time,
+  only when something's on), Overdue nudge (time, only when something's
+  overdue), "Send a test notification". Saved per account with the device's
+  time zone (`notification_settings`); devices in `push_subscriptions`
+- Events: "Reminder" field (Default / None / At start / … / 1 day before →
+  `events.reminder_minutes`, null = default, -1 = none; all-day events get
+  none). Tasks: "Remind me" date and time (`tasks.remind_at`). Like repeats,
+  these columns are only sent when used
+- What's due: `dueNotifications` in `lib/notifications.js` (tested). Sending:
+  `app/api/notifications/send` (POST, `Authorization: Bearer CRON_SECRET`,
+  called every 5 min by Supabase pg_cron, see
+  `migrations/2026-10-18-notifications-schedule.sql`) uses the service key
+  (`lib/server/supabaseAdmin.js`, server-only) and `web-push`
+  (`lib/server/push.js`); each notification is claimed in
+  `sent_notifications` first so it goes out once. `public/sw.js` shows it and
+  opens the app on tap. In development the dialog explains it only works in
+  the live app
+
 **Shared**
 - Google auth end-to-end (sign in, session persistence, sign out)
 - Dark/light theme toggle

@@ -1,11 +1,13 @@
 "use client";
 
+import { useState } from "react";
 import { usePathname } from "next/navigation";
 import ThemeToggle, { applyTheme } from "./ThemeToggle";
 import Menu from "./Menu";
 import Icon from "./Icon";
 import { useAuth } from "../../lib/AuthProvider";
 import { resetTours } from "../../lib/tourState";
+import NotificationSettings from "./NotificationSettings";
 
 const NAV_LINKS = [
   { href: "/", label: "Today", icon: "home" },
@@ -28,6 +30,7 @@ function toggleTheme() {
 export default function NavBar() {
   const pathname = usePathname();
   const { user, signOut } = useAuth();
+  const [notificationsOpen, setNotificationsOpen] = useState(false);
 
   return (
     <>
@@ -49,6 +52,9 @@ export default function NavBar() {
               </a>
             ))}
           </div>
+          <button className="ghost icon-btn" onClick={() => setNotificationsOpen(true)} aria-label="Notifications" title="Notifications">
+            <Icon name="bell" size={16} />
+          </button>
           <button className="ghost icon-btn" onClick={resetTours} aria-label="Show the tour again" title="Show the tour again">
             <Icon name="help" size={16} />
           </button>
@@ -64,6 +70,7 @@ export default function NavBar() {
             icon="menu"
             label="Menu"
             items={[
+              { label: "Notifications", onClick: () => setNotificationsOpen(true) },
               { label: "Show the tour again", onClick: resetTours },
               { label: "Switch light / dark", onClick: toggleTheme },
               ...(user ? [{ label: "Sign out", onClick: signOut }] : []),
@@ -71,6 +78,7 @@ export default function NavBar() {
           />
         </div>
       </nav>
+      <NotificationSettings open={notificationsOpen} onClose={() => setNotificationsOpen(false)} />
       <nav className="tabbar" aria-label="Pages">
         {NAV_LINKS.map(({ href, label, icon }) => {
           const active = isActive(pathname, href);

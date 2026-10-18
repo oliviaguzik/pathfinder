@@ -565,8 +565,8 @@ h1 { font-size: 28px; font-weight: 750; margin: 0 0 4px; letter-spacing: -0.025e
 .select-option.active { background: var(--surface-sunken); }
 .select-option.selected { font-weight: 600; }
 
-select, input[type="text"], input[type="date"], input[type="number"], input[type="time"] { height: var(--control-height); }
-select, input[type="text"], input[type="date"], input[type="number"], input[type="time"], textarea {
+select, input[type="text"], input[type="date"], input[type="number"], input[type="time"], input[type="datetime-local"] { height: var(--control-height); }
+select, input[type="text"], input[type="date"], input[type="number"], input[type="time"], input[type="datetime-local"], textarea {
   padding: 8px 12px;
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
@@ -2393,3 +2393,17 @@ button.danger-text:hover { color: var(--danger); background: color-mix(in srgb, 
 @media (max-width: 600px) {
   .topnav { padding-top: calc(10px + env(safe-area-inset-top, 0px)); }
 }
+
+/* Notifications dialog */
+.notify-settings { display: flex; flex-direction: column; gap: 16px; font-size: 14px; }
+.notify-device { padding: 12px 14px; border-radius: var(--radius-sm); background: var(--surface-sunken); }
+.notify-device-row, .notify-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.notify-device-row > span, .notify-row > span, .notify-check > span { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.notify-status { margin: 0; color: var(--muted); line-height: 1.5; }
+.notify-hint { font-size: 12.5px; color: var(--muted); font-weight: 400; }
+.notify-check { display: flex; align-items: flex-start; gap: 10px; cursor: pointer; }
+.notify-check .checkbox { margin-top: 2px; }
+.notify-row input[type="time"] { width: 140px; flex-shrink: 0; }
+.notify-row .select-trigger, .notify-row .trigger-with-clear { flex-shrink: 0; min-width: 150px; }
+.notify-footnote { margin: -4px 0 0; }
+.notify-test { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding-top: 4px; border-top: 1px solid var(--border-soft); }

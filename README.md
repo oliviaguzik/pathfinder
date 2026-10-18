@@ -38,6 +38,34 @@ Import the GitHub repo in Vercel and add `NEXT_PUBLIC_SUPABASE_URL` and
 `NEXT_PUBLIC_SUPABASE_ANON_KEY` as environment variables. Every push to
 `main` redeploys.
 
+## Notifications setup
+
+Notifications (event reminders, morning summary, overdue nudge, task
+reminders) need a few one-time steps. Secrets go only in `.env.local` and
+Vercel's settings, never in the code or anywhere public.
+
+1. **Database:** run `migrations/2026-10-18-notifications.sql` in Supabase
+   (SQL Editor → New query → paste → Run).
+2. **Keys:** `.env.local` already has `NEXT_PUBLIC_VAPID_PUBLIC_KEY`,
+   `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT` and `CRON_SECRET`. Add
+   `SUPABASE_SERVICE_ROLE_KEY` yourself: Supabase → Project Settings → API
+   Keys → the secret `service_role` key. It can read everyone's data, so it
+   must never be shared or given a `NEXT_PUBLIC_` name. Set `VAPID_SUBJECT`
+   to `mailto:` plus your email.
+3. **Vercel:** Project → Settings → Environment Variables → add all five
+   (same names and values as `.env.local`), then redeploy (push).
+4. **Schedule:** in Supabase run
+   `migrations/2026-10-18-notifications-schedule.sql`, with your live address
+   and `CRON_SECRET` filled in. It checks every 5 minutes.
+5. **Turn on:** open the live app (on iPhone, from the Home Screen), tap the
+   bell (or ☰ → Notifications), Turn on, then "Send a test notification".
+
+How it works: `lib/notifications.js` decides what's due (tested);
+`app/api/notifications/send` (called by the schedule, protected by
+`CRON_SECRET`) loads each person's data with the service key and sends
+through `web-push`; `public/sw.js` shows the notification and opens the app
+when it's tapped. `sent_notifications` stops anything going out twice.
+
 ## Scripts
 - `npm run dev`: start the dev server
 - `npm run build`: production build

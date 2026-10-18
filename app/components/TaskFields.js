@@ -85,6 +85,16 @@ export default function TaskFields({
         />
         {dateHint && <span className="field-hint">{dateHint}</span>}
       </div>
+      <div className="field">
+        <label htmlFor={id("remind")}>Remind me</label>
+        <input
+          id={id("remind")}
+          type="datetime-local"
+          value={form.remindAt || ""}
+          onChange={(e) => onChange({ remindAt: e.target.value })}
+        />
+        <span className="field-hint">Optional: a notification at this time</span>
+      </div>
       <div className="field field-recurring">
         <label htmlFor={id("recurring")}>Recurring</label>
         <input
