@@ -14,7 +14,7 @@ function allowed(request) {
   return !!secret && given.length === expected.length && timingSafeEqual(Buffer.from(given), Buffer.from(expected));
 }
 
-// Runs every few minutes (Supabase's scheduler calls it): for each person with
+// Runs every minute (Supabase's scheduler calls it): for each person with
 // notifications on, works out what's due (lib/notifications.js) and sends it.
 // Each notification is logged first, so it can't go out twice.
 export async function POST(request) {

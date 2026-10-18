@@ -56,7 +56,7 @@ Vercel's settings, never in the code or anywhere public.
    (same names and values as `.env.local`), then redeploy (push).
 4. **Schedule:** in Supabase run
    `migrations/2026-10-17-notifications-schedule.sql`, with your live address
-   and `CRON_SECRET` filled in. It checks every 5 minutes.
+   and `CRON_SECRET` filled in. It checks every 5 minutes; then run `migrations/2026-10-17-notifications-every-minute.sql` to check every minute.
 5. **Turn on:** open the live app (on iPhone, from the Home Screen), tap the
    bell (or ☰ → Notifications), Turn on, then "Send a test notification".
 
