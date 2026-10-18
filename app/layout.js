@@ -1,12 +1,31 @@
 import { Inter } from "next/font/google";
 import "./globals.css";
 import AuthGate from "./components/AuthGate";
+import RegisterServiceWorker from "./components/RegisterServiceWorker";
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-inter", display: "swap" });
 
 export const metadata = {
   title: "PathFinder",
   description: "Personal task and goal tracker",
+  applicationName: "PathFinder",
+  // Added to an iPhone home screen: open full-screen, named PathFinder, with a
+  // dark status bar (clock, battery) above the app.
+  appleWebApp: { capable: true, title: "PathFinder", statusBarStyle: "black" },
+  icons: { apple: "/icons/apple-touch-icon.png" },
+  formatDetection: { telephone: false },
+};
+
+// Fill the whole screen (the tab bar keeps clear of the iPhone home bar), and
+// tint the browser / status bar to match the light or dark theme.
+export const viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#f4f5f9" },
+    { media: "(prefers-color-scheme: dark)", color: "#111218" },
+  ],
 };
 
 const themeInitScript = `
@@ -29,6 +48,7 @@ export default function RootLayout({ children }) {
       </head>
       <body className={inter.variable}>
         <AuthGate>{children}</AuthGate>
+        <RegisterServiceWorker />
       </body>
     </html>
   );

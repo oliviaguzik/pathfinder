@@ -208,6 +208,20 @@ the README for which file does what). Title "Plan", subtitle "Your tasks and eve
   `tours_seen`, no table needed) and in localStorage (`lib/tourState.js`).
   "Show the tour again": ? button in the top bar (wide) or the ☰ menu (phones)
 
+**Installable app (PWA)**
+- On a phone: open the site, Share → Add to Home Screen (Safari, or Chrome on
+  iOS 16.4+; Android Chrome: ⋮ → Install app). It opens full-screen with its
+  own icon and a dark status bar, and keeps its own sign-in
+- `app/manifest.js` (name, colours, standalone), icons in `public/icons/`
+  (made from the flag mark; maskable version for Android) and `app/icon.png`
+  (browser tab), iPhone settings in `app/layout.js` (`metadata.appleWebApp`,
+  `viewport` with `viewportFit: "cover"`; the top bar pads for the notch)
+- `public/sw.js` (registered only in production by `RegisterServiceWorker`):
+  pages always come from the network (updates show at once) with
+  `public/offline.html` as the fallback; versioned `/_next/static/` files and
+  icons are kept for a fast start. Supabase / sign-in requests are never
+  stored. Bump `CACHE` in sw.js to clear old stored files
+
 **Shared**
 - Google auth end-to-end (sign in, session persistence, sign out)
 - Dark/light theme toggle

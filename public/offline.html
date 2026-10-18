@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>PathFinder · Offline</title>
+<style>
+  :root { --bg: #f4f5f9; --text: #16171d; --muted: #676c7b; --accent: #5b5bd6; }
+  @media (prefers-color-scheme: dark) { :root { --bg: #111218; --text: #ececf1; --muted: #9a9eab; --accent: #a3a3ff; } }
+  html, body { height: 100%; margin: 0; }
+  body {
+    display: flex; align-items: center; justify-content: center; padding: 24px;
+    background: var(--bg); color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", sans-serif; text-align: center;
+  }
+  img { width: 64px; height: 64px; border-radius: 16px; }
+  h1 { margin: 18px 0 6px; font-size: 20px; }
+  p { margin: 0 auto 20px; max-width: 300px; color: var(--muted); font-size: 15px; line-height: 1.5; }
+  button { padding: 10px 20px; border: none; border-radius: 10px; background: var(--accent); color: #fff; font: inherit; font-weight: 600; }
+</style>
+</head>
+<body>
+  <main>
+    <img src="/icons/icon-192.png" alt="">
+    <h1>You're offline</h1>
+    <p>PathFinder needs a connection to load your tasks and events. It'll be right here when you're back online.</p>
+    <button onclick="location.reload()">Try again</button>
+  </main>
+  <script>window.addEventListener("online", function () { location.reload(); });</script>
+</body>
+</html>
