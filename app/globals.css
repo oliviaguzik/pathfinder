@@ -2407,3 +2407,4 @@ button.danger-text:hover { color: var(--danger); background: color-mix(in srgb, 
 .notify-row .select-trigger, .notify-row .trigger-with-clear { flex-shrink: 0; min-width: 150px; }
 .notify-footnote { margin: -4px 0 0; }
 .notify-test { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding-top: 4px; border-top: 1px solid var(--border-soft); }
+.notify-problem { margin: 10px 0 0; font-size: 13px; line-height: 1.5; color: var(--danger); }

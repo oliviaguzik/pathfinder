@@ -5,8 +5,7 @@ import Modal from "./Modal";
 import Select from "./Select";
 import { supabase } from "../../lib/supabaseClient";
 import { useAuth } from "../../lib/AuthProvider";
-import { notifyWarning } from "../../lib/notify";
-import { deviceStatus, sendTestNotification, turnOffForDevice, turnOnForDevice } from "../../lib/pushClient";
+import { NotificationSetupError, deviceStatus, sendTestNotification, turnOffForDevice, turnOnForDevice } from "../../lib/pushClient";
 
 const DEFAULTS = { event_lead_minutes: 15, morning_summary_time: "08:00", overdue_nudge_time: "19:00" };
 
@@ -35,10 +34,13 @@ export default function NotificationSettings({ open, onClose }) {
   const [settings, setSettings] = useState(DEFAULTS);
   const [busy, setBusy] = useState(false);
   const [testNote, setTestNote] = useState("");
+  // What went wrong turning notifications on, shown in the dialog.
+  const [problem, setProblem] = useState("");
 
   useEffect(() => {
     if (!open) return;
     setTestNote("");
+    setProblem("");
     deviceStatus().then(setStatus);
     supabase
       .from("notification_settings")
@@ -67,16 +69,20 @@ export default function NotificationSettings({ open, onClose }) {
     });
   }
 
+  // Turning on asks permission first (straight from the tap, as iPhone
+  // requires), then saves the settings with this device's time zone.
   async function toggleDevice() {
     setBusy(true);
+    setProblem("");
     try {
       if (status === "on") setStatus(await turnOffForDevice());
       else {
-        await save({});
-        setStatus(await turnOnForDevice());
+        const next = await turnOnForDevice();
+        setStatus(next);
+        if (next === "on") await save({});
       }
-    } catch {
-      notifyWarning("Couldn't change notifications on this device. Please try again.");
+    } catch (err) {
+      setProblem(err instanceof NotificationSetupError ? err.message : `Something went wrong (${err?.name}: ${err?.message}).`);
     }
     setBusy(false);
   }
@@ -124,6 +130,7 @@ export default function NotificationSettings({ open, onClose }) {
               </button>
             </div>
           )}
+          {problem && <p className="notify-problem">{problem}</p>}
         </section>
 
         <div className="notify-row">
