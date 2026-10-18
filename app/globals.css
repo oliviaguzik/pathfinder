@@ -2600,3 +2600,68 @@ button.danger-text:hover { color: var(--danger); background: color-mix(in srgb, 
   .login-card .page-sub { font-size: 15px; margin-bottom: 32px !important; }
   .login-card .google-signin-btn, .login-card .login-form input, .login-card .login-form button { height: 48px; border-radius: 12px; font-size: 16px; }
 }
+
+/* Pull to refresh (Home Screen app): a spinner that follows the pull. */
+.ptr {
+  position: fixed;
+  top: calc(env(safe-area-inset-top, 0px) - 30px);
+  left: 50%;
+  z-index: 60;
+  width: 34px;
+  height: 34px;
+  margin-left: -17px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: var(--surface);
+  box-shadow: var(--shadow-md);
+  pointer-events: none;
+}
+.ptr-spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid var(--border);
+  border-top-color: var(--muted);
+  border-radius: 50%;
+}
+.ptr-spinner.ready { border-top-color: var(--accent); }
+.ptr-spinner.spinning { animation: ptr-spin 0.7s linear infinite; }
+@keyframes ptr-spin { to { transform: rotate(360deg); } }
+
+/* Swiping a row (touch screens): a strip in the space the row slides out of,
+   naming the action; it turns solid once letting go will do it. */
+.task-row.swipe-right, .task-row.swipe-left { position: relative; z-index: 1; }
+.task-row.swipe-right::before, .task-row.swipe-left::after {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  box-sizing: border-box;
+  width: var(--swipe, 0px);
+  display: flex;
+  align-items: center;
+  overflow: hidden;
+  white-space: nowrap;
+  font-size: 13.5px;
+  font-weight: 650;
+  color: #fff;
+  opacity: 0.55;
+  transition: opacity 0.12s;
+}
+.task-row.swipe-right::before {
+  content: "✓  " attr(data-swipe-right);
+  right: 100%;
+  justify-content: flex-start;
+  padding-left: 16px;
+  background: var(--success);
+  border-radius: var(--radius-sm) 0 0 var(--radius-sm);
+}
+.task-row.swipe-left::after {
+  content: "Delete";
+  left: 100%;
+  justify-content: flex-end;
+  padding-right: 16px;
+  background: var(--danger);
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+}
+.task-row.swipe-ready::before, .task-row.swipe-ready::after { opacity: 1; }

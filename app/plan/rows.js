@@ -9,6 +9,7 @@ import { friendlyDate } from "../../lib/dates";
 import { isDueToday, isOverdue } from "../../lib/taskGroups";
 import { openOnKey, openOnRowClick } from "../../lib/rowClick";
 import { usePlan } from "./PlanContext";
+import { useSwipeRow } from "../../lib/useSwipeRow";
 
 function goalNameFor(task, goalName) {
   return task.category === "Goal-Related" && task.goal_id ? goalName(task.goal_id) : "";
@@ -40,12 +41,16 @@ function RowTitle({ className, onOpen, children, title }) {
 // handle and drop handling (list view only). A just-ticked row pops, then fades
 // out, unless it `stays` in place (lists that keep finished tasks).
 export function TaskRow({ task, doneOn, showDue = true, plainDue = false, drag, dragOver = false, stays = false }) {
-  const { isDone, lingering, openTask, deleteTask, moveTaskToDate, goalName } = usePlan();
+  const { isDone, lingering, openTask, deleteTask, moveTaskToDate, goalName, toggleDone } = usePlan();
   const open = () => openTask(task);
+  // Touch screens: swipe right to tick off (or un-tick), left to delete.
+  const swipe = useSwipeRow({ onRight: () => toggleDone(task), onLeft: () => deleteTask(task.id) });
   return (
     <div
       className={`task-row clickable-row ${dragOver ? "drag-over" : ""} ${lingering.has(task.id) ? (stays ? "just-done" : "just-done leaving") : ""}`}
       onClick={openOnRowClick(open)}
+      data-swipe-right={isDone(task) ? "Not done" : "Done"}
+      {...swipe}
       {...drag?.rowProps}
     >
       {drag && (

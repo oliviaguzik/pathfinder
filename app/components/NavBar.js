@@ -9,6 +9,7 @@ import BrandMark from "./BrandMark";
 import { useAuth } from "../../lib/AuthProvider";
 import { replayTour } from "../../lib/tourState";
 import NotificationSettings from "./NotificationSettings";
+import Link from "next/link";
 
 const NAV_LINKS = [
   { href: "/", label: "Today", icon: "home" },
@@ -50,16 +51,16 @@ export default function NavBar() {
         <span className="topnav-title" aria-hidden="true">
           {pageName}
         </span>
-        <a href="/" className="brand">
+        <Link href="/" className="brand">
           <BrandMark />
           <span className="brand-name">PathFinder</span>
-        </a>
+        </Link>
         <div className="row topnav-wide" style={{ gap: 4 }}>
           <div className="navlinks">
             {NAV_LINKS.map(({ href, label }) => (
-              <a key={href} href={href} className={isActive(pathname, href) ? "active" : ""}>
+              <Link key={href} href={href} className={isActive(pathname, href) ? "active" : ""}>
                 {label}
-              </a>
+              </Link>
             ))}
           </div>
           <button className="ghost icon-btn" onClick={() => setNotificationsOpen(true)} aria-label="Notifications" title="Notifications">
@@ -93,10 +94,10 @@ export default function NavBar() {
         {NAV_LINKS.map(({ href, label, icon }) => {
           const active = isActive(pathname, href);
           return (
-            <a key={href} href={href} className={active ? "active" : ""} aria-current={active ? "page" : undefined}>
+            <Link key={href} href={href} className={active ? "active" : ""} aria-current={active ? "page" : undefined}>
               <Icon name={icon} size={20} />
               <span>{label}</span>
-            </a>
+            </Link>
           );
         })}
       </nav>

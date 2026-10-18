@@ -8,6 +8,7 @@ import { groupCompleted, isOverdue } from "../../lib/taskGroups";
 import { positionBetween, sortByPosition } from "../../lib/reorder";
 import { usePlan } from "./PlanContext";
 import { ListEvent, TaskRow } from "./rows";
+import Link from "next/link";
 
 const COMPLETED_PAGE = 10;
 
@@ -178,9 +179,9 @@ export default function PlanList({ agenda, taskGroups, hiddenEventCount, filters
                       Show more ({completedHidden})
                     </button>
                   )}
-                  <a className="completed-review-link" href="/review">
+                  <Link className="completed-review-link" href="/review">
                     See your week in Review <Icon name="chevronRight" size={13} />
-                  </a>
+                  </Link>
                 </div>
               </>
             )}

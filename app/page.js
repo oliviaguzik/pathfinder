@@ -7,6 +7,7 @@ import Icon from "./components/Icon";
 import TaskMeta from "./components/TaskMeta";
 import EventModal from "./components/EventModal";
 import EventRow from "./components/EventRow";
+import SwipeRow from "./components/SwipeRow";
 import TaskEditModal from "./components/TaskEditModal";
 import PageTour from "./components/PageTour";
 import { eventTimeLabel, occurrencesBetween, sortEvents } from "../lib/events";
@@ -16,6 +17,7 @@ import { openOnKey, openOnRowClick } from "../lib/rowClick";
 import { removeEventWithUndo } from "../lib/eventActions";
 import { todayLocalISODate } from "../lib/dates";
 import { useAuth } from "../lib/AuthProvider";
+import Link from "next/link";
 
 const FOCUS_LIMIT = 3;
 const PRIORITY_RANK = { High: 0, Medium: 1, Low: 2 };
@@ -183,10 +185,13 @@ export default function TodayPage() {
     const overdue = t.status !== "Done" && t.due_date && t.due_date < today;
     const focusFull = openFocusCount >= FOCUS_LIMIT;
     return (
-      <div
+      <SwipeRow
         className={`task-row today-row clickable-row ${lingering.has(t.id) ? `just-done ${inFocus ? "" : "leaving"}` : ""}`}
         key={t.id}
         onClick={openOnRowClick(() => setEditingTask(t))}
+        onRight={() => toggleDone(t)}
+        onLeft={() => deleteTask(t)}
+        data-swipe-right={t.status === "Done" ? "Not done" : "Done"}
       >
         <input
           type="checkbox"
@@ -234,7 +239,7 @@ export default function TodayPage() {
             ×
           </button>
         </div>
-      </div>
+      </SwipeRow>
     );
   }
 
@@ -273,7 +278,7 @@ export default function TodayPage() {
             <section className="main-goal-line">
               <Icon name="starFilled" size={14} />
               <div className="main-goal-line-text">
-                <a className="main-goal-line-name" href="/goals">{mainGoal.name}</a>
+                <Link className="main-goal-line-name" href="/goals">{mainGoal.name}</Link>
                 <span className="main-goal-line-pct">{mainPct}%</span>
                 <span className="main-goal-line-next">
                   {!nextStep

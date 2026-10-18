@@ -11,6 +11,7 @@ import PageTour from "../components/PageTour";
 import { openOnKey, openOnRowClick } from "../../lib/rowClick";
 import { friendlyDate, getWeekDays, toISODateLocal, todayLocalISODate, weekLabel } from "../../lib/dates";
 import { getPeriod, goalsNeedingAttention, periodReport, shiftAnchor } from "../../lib/insights";
+import Link from "next/link";
 
 const RANGES = [
   { key: "week", label: "Week" },
@@ -307,7 +308,7 @@ export default function ReviewPage() {
                 const pct = goalTasks.length ? Math.round((doneCount / goalTasks.length) * 100) : 0;
                 const flag = !finished && flags[goal.id];
                 return (
-                  <a className="review-goal" href="/goals" key={goal.id}>
+                  <Link className="review-goal" href="/goals" key={goal.id}>
                     <CircularProgress percent={finished ? 100 : pct} size={38} strokeWidth={4} />
                     <span className="attention-text">
                       <span className="attention-name">{goal.name}</span>
@@ -323,7 +324,7 @@ export default function ReviewPage() {
                       {doneInPeriod}
                       <span>done</span>
                     </span>
-                  </a>
+                  </Link>
                 );
               })}
               <MoreLess

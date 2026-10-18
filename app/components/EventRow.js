@@ -3,13 +3,16 @@
 import Icon from "./Icon";
 import { openOnKey, openOnRowClick } from "../../lib/rowClick";
 import { repeatLabel } from "../../lib/events";
+import { useSwipeRow } from "../../lib/useSwipeRow";
 
 // An event in a list of tasks: shaped like a task row so they line up, but
 // with a teal clock where the checkbox would be. Click the row to open it;
-// × (on hover) deletes it.
+// × (on hover) or a swipe left deletes it.
 export default function EventRow({ event, when, past = false, onOpen, onDelete }) {
+  // Touch screens: swipe left to delete.
+  const swipe = useSwipeRow({ onLeft: onDelete });
   return (
-    <div className={`task-row list-event clickable-row ${past ? "past" : ""}`} onClick={openOnRowClick(onOpen)}>
+    <div className={`task-row list-event clickable-row ${past ? "past" : ""}`} onClick={openOnRowClick(onOpen)} {...swipe}>
       <span className="list-event-icon">
         <Icon name="clock" size={14} />
       </span>

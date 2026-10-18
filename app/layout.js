@@ -2,6 +2,7 @@ import { Inter } from "next/font/google";
 import "./globals.css";
 import AuthGate from "./components/AuthGate";
 import RegisterServiceWorker from "./components/RegisterServiceWorker";
+import PullToRefresh from "./components/PullToRefresh";
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-inter", display: "swap" });
 
@@ -49,6 +50,7 @@ export default function RootLayout({ children }) {
       <body className={inter.variable}>
         <AuthGate>{children}</AuthGate>
         <RegisterServiceWorker />
+        <PullToRefresh />
       </body>
     </html>
   );
